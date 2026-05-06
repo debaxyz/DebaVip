@@ -1,362 +1,433 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
-  <title>Forecasting Extremes: When Large & Small Numbers Collide</title>
-  <meta name="description" content="Analyzing predictive significance of extreme numerical juxtapositions — from finance and epidemiology to seismic risk and quality control.">
-  <style>
-    * {
-      margin: 0;
-      padding: 0;
-      box-sizing: border-box;
-    }
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>CYBER TAMILAN • VIP PREDICTOR</title>
+<link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@500;600;700&family=Orbitron:wght@500;700;900&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<style>
+:root {
+  --gold: #f5a623;
+  --gold-bright: #ffc740;
+  --gold-dim: #c47f00;
+  --black: #0a0a0a;
+  --card: #161616;
+  --card2: #1c1c1c;
+  --border: rgba(245,166,35,0.32);
+  --border-bright: rgba(245,166,35,0.7);
+  --text: #e8e8e8;
+  --text-dim: #777;
+}
+* { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+html,body { min-height:100vh; background:var(--black); font-family:'Rajdhani',sans-serif; color:var(--text); overflow-x:hidden; }
+body::after {
+  content:''; position:fixed; inset:0;
+  background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,0.05) 2px,rgba(0,0,0,0.05) 4px);
+  pointer-events:none; z-index:9990;
+}
 
-    body {
-      background: linear-gradient(145deg, #f1f5fc 0%, #e9eef4 100%);
-      font-family: 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
-      line-height: 1.5;
-      color: #1a2634;
-      padding: 2rem 1rem;
-    }
+/* LOGIN */
+#loginPage { position:fixed; inset:0; background:var(--black); z-index:9999; display:flex; flex-direction:column; align-items:center; overflow-y:auto; padding:28px 20px 50px; }
+.vip-badge { display:flex; align-items:center; gap:8px; background:rgba(245,166,35,0.1); border:1.5px solid var(--border-bright); border-radius:100px; padding:8px 24px; font-size:0.72rem; font-weight:700; letter-spacing:3px; color:var(--gold); margin-bottom:28px; }
+.brand-name { font-family:'Orbitron',monospace; font-size:2.8rem; font-weight:900; color:var(--gold); letter-spacing:3px; text-align:center; text-shadow:0 0 40px rgba(245,166,35,0.35); margin-bottom:10px; line-height:1.15; }
+.brand-sub { text-align:center; color:var(--text-dim); font-size:0.92rem; font-weight:600; letter-spacing:1px; margin-bottom:5px; }
+.brand-tag { text-align:center; color:var(--gold); font-size:0.82rem; font-weight:600; margin-bottom:30px; opacity:0.85; }
+.login-stats { display:grid; grid-template-columns:repeat(3,1fr); gap:12px; width:100%; max-width:380px; margin-bottom:28px; }
+.ls-box { background:var(--card); border:1.5px solid var(--border); border-radius:18px; padding:18px 8px 14px; text-align:center; }
+.ls-icon { font-size:1.15rem; color:var(--gold); margin-bottom:7px; display:block; }
+.ls-val { font-family:'Orbitron',monospace; font-size:1.15rem; font-weight:700; color:var(--gold); display:block; line-height:1; margin-bottom:5px; }
+.ls-lab { font-size:0.62rem; color:var(--text-dim); letter-spacing:2px; font-weight:700; }
+.license-box { width:100%; max-width:380px; background:var(--card); border:1.5px solid var(--border); border-radius:24px; padding:24px 20px; margin-bottom:14px; }
+.lic-title { font-size:1.05rem; font-weight:700; color:var(--text); display:flex; align-items:center; gap:8px; margin-bottom:18px; }
+.lic-title i { color:var(--gold); }
+#accessKey { width:100%; background:rgba(255,255,255,0.05); border:1.5px solid rgba(255,255,255,0.1); border-radius:14px; padding:15px 18px; color:var(--text); font-family:'Share Tech Mono',monospace; font-size:0.9rem; text-align:center; outline:none; letter-spacing:2px; margin-bottom:14px; transition:border-color 0.3s; }
+#accessKey::placeholder { color:rgba(255,255,255,0.2); letter-spacing:1px; }
+#accessKey:focus { border-color:var(--gold); }
+#unlockBtn { width:100%; background:linear-gradient(135deg,#f5a623,#e8960f); border:none; border-radius:14px; padding:17px; color:#000; font-family:'Rajdhani',sans-serif; font-size:1.1rem; font-weight:800; letter-spacing:3px; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:10px; transition:all 0.2s; text-transform:uppercase; }
+#unlockBtn:active { transform:scale(0.97); }
+.lic-hint { text-align:center; font-size:0.76rem; color:var(--text-dim); margin-top:13px; }
+#loginErr { color:#e74c3c; font-size:0.8rem; text-align:center; margin-top:10px; display:none; font-weight:700; }
+.tg-links { width:100%; max-width:380px; display:flex; flex-direction:column; gap:11px; }
+.tg-card { background:var(--card); border:1.5px solid var(--border); border-radius:18px; padding:15px 17px; display:flex; align-items:center; gap:14px; text-decoration:none; transition:border-color 0.3s; }
+.tg-card:active { opacity:0.8; }
+.tg-icon { width:44px; height:44px; background:var(--gold); border-radius:50%; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+.tg-icon i { color:#000; font-size:1.1rem; }
+.tg-info { flex:1; }
+.tg-title { font-size:0.93rem; font-weight:700; color:var(--gold); display:block; margin-bottom:2px; }
+.tg-sub { font-size:0.72rem; color:var(--text-dim); font-weight:500; }
+.tg-arrow { color:var(--text-dim); font-size:0.85rem; }
+.login-footer { margin-top:24px; text-align:center; font-size:0.7rem; color:rgba(255,255,255,0.18); letter-spacing:1px; }
 
-    .container {
-      max-width: 1280px;
-      margin: 0 auto;
-      background: rgba(255,255,255,0.92);
-      backdrop-filter: blur(0px);
-      border-radius: 2rem;
-      box-shadow: 0 25px 45px -12px rgba(0,0,0,0.25), 0 2px 6px rgba(0,0,0,0.05);
-      overflow: hidden;
-      transition: all 0.2s;
-    }
-
-    header {
-      background: #0b2b3b;
-      padding: 2rem 2rem 1.8rem;
-      color: white;
-      border-bottom: 4px solid #f4c542;
-    }
-
-    h1 {
-      font-size: 2.2rem;
-      font-weight: 700;
-      letter-spacing: -0.01em;
-      display: flex;
-      align-items: center;
-      gap: 0.75rem;
-      flex-wrap: wrap;
-    }
-
-    h1 span {
-      background: #f4c542;
-      color: #0b2b3b;
-      font-size: 1.3rem;
-      padding: 0.2rem 0.8rem;
-      border-radius: 60px;
-      font-weight: 600;
-    }
-
-    .subhead {
-      font-size: 1.1rem;
-      margin-top: 0.7rem;
-      opacity: 0.85;
-      border-left: 3px solid #f4c542;
-      padding-left: 1rem;
-    }
-
-    .content {
-      padding: 2rem 2rem 2.5rem;
-    }
-
-    .key-insight {
-      background: #fff6e5;
-      border-left: 6px solid #f4c542;
-      padding: 1.2rem 1.8rem;
-      margin-bottom: 2.2rem;
-      border-radius: 1rem;
-      box-shadow: 0 4px 10px rgba(0,0,0,0.02);
-      font-weight: 500;
-      font-size: 1.05rem;
-    }
-
-    .grid-cards {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-      gap: 1.8rem;
-      margin: 2rem 0 2rem;
-    }
-
-    .card {
-      background: white;
-      border-radius: 1.2rem;
-      overflow: hidden;
-      box-shadow: 0 8px 20px rgba(0,0,0,0.05);
-      transition: transform 0.2s ease, box-shadow 0.2s;
-      border: 1px solid #e2edf2;
-    }
-
-    .card:hover {
-      transform: translateY(-4px);
-      box-shadow: 0 20px 28px -12px rgba(0,0,0,0.15);
-    }
-
-    .card-head {
-      background: #f8fafd;
-      padding: 1rem 1.5rem;
-      border-bottom: 2px solid #e9ecef;
-      font-weight: 700;
-      font-size: 1.3rem;
-      display: flex;
-      align-items: center;
-      gap: 0.6rem;
-      color: #0f3b4c;
-    }
-
-    .card-head i {
-      font-size: 1.6rem;
-    }
-
-    .card-body {
-      padding: 1.4rem 1.5rem 1.8rem;
-    }
-
-    .card-body p {
-      margin-bottom: 0.9rem;
-    }
-
-    .num-example {
-      background: #eef2fa;
-      border-radius: 0.8rem;
-      padding: 0.8rem 1rem;
-      font-family: 'SF Mono', 'Fira Code', monospace;
-      font-weight: 600;
-      margin: 0.8rem 0;
-      border-left: 3px solid #2c7da0;
-      font-size: 0.9rem;
-    }
-
-    .decision-badge {
-      background: #def4e8;
-      color: #1e5e40;
-      border-radius: 30px;
-      padding: 0.2rem 0.8rem;
-      font-size: 0.75rem;
-      font-weight: 700;
-      display: inline-block;
-      margin-top: 0.6rem;
-    }
-
-    .big-number {
-      font-size: 1.2rem;
-      font-weight: 800;
-      color: #bc4e2c;
-    }
-
-    .small-number {
-      font-size: 1.2rem;
-      font-weight: 800;
-      color: #2c7a4d;
-    }
-
-    hr {
-      margin: 2rem 0 1.5rem;
-      border: none;
-      height: 2px;
-      background: linear-gradient(90deg, #cbdde6, transparent);
-    }
-
-    .takeaway {
-      background: #e5f0f5;
-      border-radius: 1.2rem;
-      padding: 1.5rem 2rem;
-      margin-top: 1.8rem;
-    }
-
-    .takeaway h3 {
-      font-size: 1.4rem;
-      margin-bottom: 1rem;
-      display: flex;
-      align-items: center;
-      gap: 0.5rem;
-    }
-
-    footer {
-      background: #f0f4f9;
-      text-align: center;
-      font-size: 0.8rem;
-      padding: 1rem;
-      color: #4a6272;
-      border-top: 1px solid #dce5ec;
-    }
-
-    @media (max-width: 680px) {
-      .content {
-        padding: 1.5rem;
-      }
-      h1 {
-        font-size: 1.7rem;
-      }
-    }
-  </style>
+/* MAIN APP */
+#mainApp { display:none; flex-direction:column; align-items:center; padding:16px 14px 50px; min-height:100vh; }
+.top-bar { width:100%; max-width:460px; display:flex; align-items:center; justify-content:space-between; margin-bottom:14px; }
+.top-brand { font-family:'Orbitron',monospace; font-size:1.05rem; font-weight:900; color:var(--gold); letter-spacing:2px; }
+.top-live { display:flex; align-items:center; gap:6px; font-size:0.68rem; font-weight:700; color:var(--gold); letter-spacing:2px; }
+.live-dot { width:7px; height:7px; background:#2ecc71; border-radius:50%; animation:blink 1s infinite; }
+@keyframes blink { 0%,100%{opacity:1}50%{opacity:0.15} }
+#broadcastBar { width:100%; max-width:460px; background:rgba(245,166,35,0.09); border:1px solid var(--border); border-radius:50px; padding:10px 18px; text-align:center; color:var(--gold); font-size:0.8rem; font-weight:600; margin-bottom:13px; display:none; }
+.tabs { display:flex; gap:10px; width:100%; max-width:460px; margin-bottom:14px; }
+.tab-btn { flex:1; padding:13px; background:var(--card); border:1.5px solid var(--border); border-radius:100px; color:var(--text-dim); font-family:'Rajdhani',sans-serif; font-size:0.88rem; font-weight:700; letter-spacing:1px; cursor:pointer; transition:all 0.25s; text-transform:uppercase; }
+.tab-btn.active { background:var(--gold); border-color:var(--gold); color:#000; }
+.main-card { width:100%; max-width:460px; background:var(--card); border:1.5px solid var(--border); border-radius:26px; padding:20px; margin-bottom:12px; }
+.sec-label { font-size:0.68rem; font-weight:700; letter-spacing:3px; color:var(--text-dim); text-transform:uppercase; margin-bottom:13px; display:flex; align-items:center; gap:8px; }
+.sec-label::after { content:''; flex:1; height:1px; background:var(--border); }
+.stats-row { display:grid; grid-template-columns:repeat(3,1fr); gap:10px; margin-bottom:12px; }
+.stat-card { background:var(--card2); border:1px solid var(--border); border-radius:15px; padding:14px 6px; text-align:center; }
+.stat-card .s-ico { font-size:0.88rem; color:var(--text-dim); margin-bottom:5px; display:block; }
+.stat-card .s-val { font-family:'Orbitron',monospace; font-size:1.25rem; font-weight:700; display:block; line-height:1; }
+.stat-card .s-lab { font-size:0.6rem; font-weight:700; color:var(--text-dim); letter-spacing:2px; margin-top:4px; display:block; }
+.wv{color:#2ecc71}.lv{color:#e74c3c}.jv{color:var(--gold-bright);text-shadow:0 0 10px var(--gold)}
+.acc-row { background:var(--card2); border:1px solid var(--border); border-radius:13px; padding:12px 16px; margin-bottom:12px; display:flex; align-items:center; gap:12px; }
+.acc-lbl { font-size:0.7rem; font-weight:700; letter-spacing:2px; color:var(--text-dim); white-space:nowrap; }
+.acc-bar { flex:1; height:5px; background:rgba(255,255,255,0.07); border-radius:10px; overflow:hidden; }
+.acc-fill { height:100%; background:linear-gradient(90deg,var(--gold-dim),var(--gold-bright)); border-radius:10px; transition:width 0.5s; }
+.acc-pct { font-family:'Share Tech Mono',monospace; font-size:0.88rem; color:#2ecc71; white-space:nowrap; }
+.pred-card { background:var(--card2); border:1.5px solid rgba(245,166,35,0.22); border-radius:20px; padding:18px; margin-bottom:12px; }
+.pred-period { font-size:0.76rem; color:var(--gold); font-weight:700; letter-spacing:1px; margin-bottom:14px; display:flex; align-items:center; gap:6px; flex-wrap:wrap; }
+.pred-period span { background:rgba(245,166,35,0.1); border-radius:100px; padding:3px 10px; font-size:0.68rem; margin-left:4px; }
+.pred-display { background:var(--black); border:1.5px solid var(--border); border-radius:16px; padding:22px; text-align:center; }
+.pred-res { font-family:'Orbitron',monospace; font-size:2.3rem; font-weight:900; color:var(--gold); text-shadow:0 0 25px rgba(245,166,35,0.5); letter-spacing:3px; }
+.pred-nums { font-size:0.88rem; color:#2ecc71; margin-top:8px; font-weight:600; font-family:'Share Tech Mono',monospace; }
+.circles-wrap { display:flex; gap:8px; overflow-x:auto; padding:4px 0 8px; scrollbar-width:none; }
+.circles-wrap::-webkit-scrollbar { display:none; }
+.res-circle { width:46px; height:46px; border-radius:50%; flex-shrink:0; display:flex; flex-direction:column; align-items:center; justify-content:center; background:var(--card2); border:1.5px solid var(--border); font-family:'Orbitron',monospace; font-size:0.88rem; font-weight:700; color:var(--gold); }
+.res-circle small { font-size:0.45rem; color:var(--text-dim); font-family:'Rajdhani'; margin-top:1px; }
+.history-wrap { background:var(--card2); border:1px solid var(--border); border-radius:16px; overflow:hidden; }
+table { width:100%; border-collapse:collapse; }
+th { background:rgba(245,166,35,0.07); color:var(--gold); padding:11px 8px; font-size:0.7rem; letter-spacing:2px; text-align:center; font-weight:700; border-bottom:1px solid var(--border); }
+td { padding:10px 8px; text-align:center; border-bottom:1px solid rgba(255,255,255,0.04); font-size:0.83rem; font-weight:600; color:var(--text-dim); }
+.status-badge { display:inline-flex; align-items:center; justify-content:center; width:28px; height:28px; border-radius:8px; font-size:0.68rem; font-weight:800; }
+.win-bg{background:rgba(46,204,113,0.13);color:#2ecc71;border:1px solid #2ecc71}
+.loss-bg{background:rgba(231,76,60,0.13);color:#e74c3c;border:1px solid #e74c3c}
+.jackpot-bg{background:rgba(245,166,35,0.18);color:var(--gold);border:1px solid var(--gold)}
+.pending-bg{background:rgba(255,255,255,0.04);color:var(--text-dim);border:1px solid rgba(255,255,255,0.1);animation:pulse 1.2s infinite}
+@keyframes pulse{0%,100%{opacity:0.35}50%{opacity:1}}
+.hidden{display:none!important}
+</style>
 </head>
 <body>
-<div class="container">
-  <header>
-    <h1>
-      ⚖️ The Extremes paradox 
-      <span>big ⇄ small</span>
-    </h1>
-    <div class="subhead">
-      Why a sudden numerical contrast — huge value followed by a tiny one or vice versa — can rewrite forecasts, break models, and force strategic pivots.
+
+<!-- LOGIN PAGE -->
+<div id="loginPage">
+  <div class="vip-badge">✦ VIP PREMIUM PREDICTOR ✦</div>
+  <div class="brand-name">CYBER<br>TAMILAN</div>
+  <div class="brand-sub">Wingo 1 Min · Color · Number · Big/Small</div>
+  <div class="brand-tag">Tamil Nadu's most powerful VIP predictor</div>
+  <div class="login-stats">
+    <div class="ls-box">
+      <span class="ls-icon"><i class="fas fa-bolt"></i></span>
+      <span class="ls-val">99%</span>
+      <span class="ls-lab">ACCURACY</span>
     </div>
-  </header>
-  <div class="content">
-    <div class="key-insight">
-      📊 <strong>Core analytical pattern:</strong> In time-series, risk assessment, and probabilistic forecasting, a transition between <strong>extremely large magnitude</strong> and <strong>extremely small magnitude</strong> often signals non-stationarity, regime shift, or hidden leverage. Ignoring such juxtapositions leads to severe misestimation of volatility, tail risks, and causal dependencies.
+    <div class="ls-box">
+      <span class="ls-icon"><i class="fas fa-shield-halved"></i></span>
+      <span class="ls-val">VIP</span>
+      <span class="ls-lab">HACK</span>
     </div>
+    <div class="ls-box">
+      <span class="ls-icon"><i class="fas fa-satellite-dish"></i></span>
+      <span class="ls-val">LIVE</span>
+      <span class="ls-lab">PERIOD</span>
+    </div>
+  </div>
+  <div class="license-box">
+    <div class="lic-title"><i class="fas fa-key"></i> Enter License Key</div>
+    <input type="text" id="accessKey" placeholder="CYBERTAMILAN-XXXX-XXXX-XXXX" autocomplete="off">
+    <button id="unlockBtn" onclick="checkAuth()"><i class="fas fa-lock"></i> UNLOCK PREDICTOR</button>
+    <div class="lic-hint">Don't have a key? Contact admin on Telegram below</div>
+    <div id="loginErr"></div>
+  </div>
+  <div class="tg-links">
+    <a href="https://t.me/freefaack" class="tg-card" target="_blank">
+      <div class="tg-icon"><i class="fab fa-telegram"></i></div>
+      <div class="tg-info"><span class="tg-title">Join VIP Channel</span><span class="tg-sub">Free signals &amp; updates</span></div>
+      <i class="fas fa-arrow-right tg-arrow"></i>
+    </a>
+    <a href="https://t.me/cybertamil7" class="tg-card" target="_blank">
+      <div class="tg-icon"><i class="fab fa-telegram"></i></div>
+      <div class="tg-info"><span class="tg-title">Buy Key — @cybertamil7</span><span class="tg-sub">Direct admin DM</span></div>
+      <i class="fas fa-arrow-right tg-arrow"></i>
+    </a>
+  </div>
+  <div class="login-footer">© CYBER TAMILAN · Personal VIP Predictor · Use responsibly</div>
+</div>
 
-    <div class="grid-cards">
-      <!-- Finance: black swan and volatility clustering -->
-      <div class="card">
-        <div class="card-head">
-          <i>📉</i> Financial markets & risk
-        </div>
-        <div class="card-body">
-          <p><span class="big-number">Large market return (+12%)</span> followed by <span class="small-number">near-zero or sharply negative (-9%)</span> within days → volatility clustering & mean reversion traps.</p>
-          <div class="num-example">
-            Example: S&P 500 surges 8% after Fed announcement → next session drops 0.02% (tiny), then cascades -5%. Predictive signal: abnormal liquidity dry-up precedes crash.
-          </div>
-          <p><strong>Why it matters:</strong> Standard volatility models (e.g., GARCH) assume gradual decay. A massive jump then a tiny move breaks autocorrelation assumptions. Risk managers must reweight tail scenarios, adjust stop-loss triggers or dynamic hedging.</p>
-          <span class="decision-badge">🔍 Decision impact: portfolio rebalancing, IV crush anticipation</span>
-        </div>
-      </div>
+<!-- MAIN APP -->
+<div id="mainApp">
+  <div class="top-bar">
+    <span class="top-brand">CYBER TAMILAN</span>
+    <span class="top-live"><span class="live-dot"></span>LIVE</span>
+  </div>
+  <div id="broadcastBar"></div>
+  <div class="tabs">
+    <button id="btn1M" class="tab-btn active" onclick="switchTab('1M')">⚡ WINGO 1M</button>
+    <button id="btn30S" class="tab-btn" onclick="switchTab('30S')">🔥 WINGO 30S</button>
+  </div>
 
-      <!-- Epidemiology: superspreader followed by near-zero cases -->
-      <div class="card">
-        <div class="card-head">
-          <i>🦠</i> Epidemiology & outbreak control
-        </div>
-        <div class="card-body">
-          <p><span class="big-number">Daily new infections: 45,000</span> (large) followed by <span class="small-number">200</span> (very small) → misleading lull before resurgence.</p>
-          <div class="num-example">
-            Real scenario: After mass testing campaign, reported cases drop from 50k → 500 due to reporting delays or weekend effect. False sense of control leads to relaxed NPIs → next wave magnitude doubles.
-          </div>
-          <p><strong>Forecasting trap:</strong> Epidemic models (SEIR) rely on consistent reproduction number. A big → tiny transition often indicates surveillance artifacts, not true elimination. Decision-makers must delay reopening, apply nowcasting, or adjust mobility thresholds.</p>
-          <span class="decision-badge">🚸 Action: extend mitigation, use Bayesian nowcasting</span>
-        </div>
-      </div>
-
-      <!-- Seismic hazard: foreshock & aftershock asymmetry -->
-      <div class="card">
-        <div class="card-head">
-          <i>🌋</i> Seismic & geophysical hazards
-        </div>
-        <div class="card-body">
-          <p><span class="big-number">Magnitude 7.2 mainshock</span> followed by <span class="small-number">M 1.5 aftershock sequence</span> or vice versa: <span class="big-number">very small ground motion</span> preceding <span class="small-number">massive rupture</span>.</p>
-          <div class="num-example">
-            Foreshock pattern: 1989 Loma Prieta — small tremors (M ~1-2) followed days later by M6.9. Conversely, large mainshock → tiny aftershocks can indicate stress shadow.
-          </div>
-          <p><strong>Predictive use:</strong> Forecasters monitor seismic quiescence (tiny events after big ones) – may indicate fault healing or delayed larger event. The juxtaposition resets hazard probabilities; real-time systems adapt from "declustering" algorithms to ETAS model updates.</p>
-          <span class="decision-badge">⚠️ Infrastructure alerts: bridge inspections, early warning recalibration</span>
-        </div>
-      </div>
-
-      <!-- Manufacturing & quality: defect rates -->
-      <div class="card">
-        <div class="card-head">
-          <i>🏭</i> Industrial quality control
-        </div>
-        <div class="card-body">
-          <p><span class="big-number">Defect rate: 12%</span> (large) followed by <span class="small-number">0.03%</span> (very small) over two batches → suspicious process change or sensor failure.</p>
-          <div class="num-example">
-            Semiconductor fab: 15,000 defects per million (high) → next wafer shows 2 defects (extreme low). This sudden flip often indicates measurement error or calibration shift, not actual quality improvement.
-          </div>
-          <p><strong>Forecasting consequences:</strong> Predictive maintenance models assume gradual drift. Big → small oscillation triggers false positives, leading to unnecessary line shutdowns or missed deterioration. Managers must apply CUSUM charts and rational subgrouping.</p>
-          <span class="decision-badge">📊 Action: verify metrology, use robust outlier detection</span>
-        </div>
-      </div>
-
-      <!-- Macro economics: hyperinflation to price freeze -->
-      <div class="card">
-        <div class="card-head">
-          <i>💸</i> Monetary & fiscal policy
-        </div>
-        <div class="card-body">
-          <p><span class="big-number">Monthly inflation: 45%</span> (hyperinflation) followed by <span class="small-number">0.1%</span> (near-zero) after currency reform.</p>
-          <div class="num-example">
-            Zimbabwe 2008-2009: Inflation peak 79.6 billion percent month-on-month → after dollarization, monthly inflation ~0%. This extreme flip distorts GDP forecasting, debt valuation, and social planning.
-          </div>
-          <p><strong>Why significant:</strong> Standard econometric models (ARIMA, cointegration) break at such discontinuities. Policymakers need regime-switching models, behavioral adjustments, and real-time purchasing power parity reassessments.</p>
-          <span class="decision-badge">🏦 Strategy: redenomination, dollarization impact analysis</span>
-        </div>
-      </div>
-
-      <!-- Climate tipping: precipitation extremes -->
-      <div class="card">
-        <div class="card-head">
-          <i>🌊</i> Hydrology & climate extremes
-        </div>
-        <div class="card-body">
-          <p><span class="big-number">Monthly rainfall: 780 mm</span> (atmospheric river) followed by <span class="small-number">0 mm</span> for 60 days → flash drought & landslide risk inversion.</p>
-          <div class="num-example">
-            California 2017: Huge winter precipitation (200% of normal) → extreme dry spring. This pattern amplifies wildfire fuel loads and reservoir mismanagement.
-          </div>
-          <p><strong>Prediction challenge:</strong> Water resource models relying on historical averages fail. Adaptive forecasting must incorporate whiplash indicators, affecting reservoir release policies and agricultural insurance triggers.</p>
-          <span class="decision-badge">💧 Consequence: flood control vs long-term drought hedging</span>
-        </div>
+  <!-- 1M -->
+  <div id="section1M" class="main-card">
+    <div class="sec-label">Statistics</div>
+    <div class="stats-row">
+      <div class="stat-card"><span class="s-ico"><i class="fas fa-check-circle"></i></span><span id="w1M" class="s-val wv">0</span><span class="s-lab">WIN</span></div>
+      <div class="stat-card"><span class="s-ico"><i class="fas fa-times-circle"></i></span><span id="l1M" class="s-val lv">0</span><span class="s-lab">LOSS</span></div>
+      <div class="stat-card"><span class="s-ico"><i class="fas fa-crown"></i></span><span id="j1M" class="s-val jv">0</span><span class="s-lab">JACKPOT</span></div>
+    </div>
+    <div class="acc-row">
+      <span class="acc-lbl">ACC</span>
+      <div class="acc-bar"><div id="accFill1M" class="acc-fill" style="width:0%"></div></div>
+      <span id="acc1M" class="acc-pct">0%</span>
+    </div>
+    <div class="pred-card">
+      <div class="pred-period" id="period1M"><i class="fas fa-satellite-dish"></i> PERIOD: -- <span>SYNCING</span></div>
+      <div class="pred-display">
+        <div id="res1M" class="pred-res">SYNC...</div>
+        <div id="num1M" class="pred-nums">--</div>
       </div>
     </div>
+    <div class="sec-label" style="margin-top:4px">Recent Results</div>
+    <div class="circles-wrap" id="resCont1M"></div>
+    <div class="sec-label" style="margin-top:8px">History</div>
+    <div class="history-wrap">
+      <table><thead><tr><th>PERIOD</th><th>SIZE</th><th>NUMS</th><th>RES</th></tr></thead><tbody id="body1M"></tbody></table>
+    </div>
+  </div>
 
-    <hr />
-
-    <div style="display: flex; flex-wrap: wrap; gap: 1.8rem; justify-content: space-between;">
-      <div style="flex: 1; min-width: 240px;">
-        <h3 style="display: flex; gap: 0.4rem; margin-bottom: 1rem;">📐 Why such fluctuations matter</h3>
-        <ul style="padding-left: 1.2rem; color: #2c3e44;">
-          <li><strong>Scale breaks stationarity:</strong> Many models assume constant variance (homoscedasticity). A big→small flip violates that, causing prediction intervals to collapse or explode inaccurately.</li>
-          <li><strong>Non-linear thresholds:</strong> Extremes often cross hidden tipping points — small initial condition can amplify into large outcome (butterfly effect reversed).</li>
-          <li><strong>Outlier leverage:</strong> In regression or ML, a single enormous value paired with a tiny subsequent value can skew coefficient estimates and decision boundaries.</li>
-          <li><strong>Cognitive bias:</strong> Analysts anchor on the large number and underestimate the impact of the small one, or vice versa (e.g., base rate neglect).</li>
-        </ul>
+  <!-- 30S -->
+  <div id="section30S" class="main-card hidden">
+    <div class="sec-label">Statistics</div>
+    <div class="stats-row">
+      <div class="stat-card"><span class="s-ico"><i class="fas fa-check-circle"></i></span><span id="w30S" class="s-val wv">0</span><span class="s-lab">WIN</span></div>
+      <div class="stat-card"><span class="s-ico"><i class="fas fa-times-circle"></i></span><span id="l30S" class="s-val lv">0</span><span class="s-lab">LOSS</span></div>
+      <div class="stat-card"><span class="s-ico"><i class="fas fa-crown"></i></span><span id="j30S" class="s-val jv">0</span><span class="s-lab">JACKPOT</span></div>
+    </div>
+    <div class="acc-row">
+      <span class="acc-lbl">ACC</span>
+      <div class="acc-bar"><div id="accFill30S" class="acc-fill" style="width:0%"></div></div>
+      <span id="acc30S" class="acc-pct">0%</span>
+    </div>
+    <div class="pred-card">
+      <div class="pred-period" id="period30S"><i class="fas fa-satellite-dish"></i> PERIOD: -- <span>SYNCING</span></div>
+      <div class="pred-display">
+        <div id="res30S" class="pred-res">SYNC...</div>
+        <div id="num30S" class="pred-nums">--</div>
       </div>
-      <div style="flex: 1; min-width: 240px;">
-        <h3 style="display: flex; gap: 0.4rem; margin-bottom: 1rem;">🧠 How pattern influences forecasting</h3>
-        <ul style="padding-left: 1.2rem; color: #2c3e44;">
-          <li><strong>Regime switching models (Markov / threshold AR):</strong> Essential for handling big↔small transitions.</li>
-          <li><strong>Extreme value theory (EVT):</strong> Helps predict probability of another large event after small lull.</li>
-          <li><strong>Dynamic stress testing:</strong> Financial and operational risk simulations inject big→small sequences as shock scenarios.</li>
-          <li><strong>Ensemble uncertainty intervals:</strong> Widening prediction bounds when such pattern appears in recent data.</li>
-        </ul>
-      </div>
     </div>
+    <div class="sec-label" style="margin-top:4px">Recent Results</div>
+    <div class="circles-wrap" id="resCont30S"></div>
+    <div class="sec-label" style="margin-top:8px">History</div>
+    <div class="history-wrap">
+      <table><thead><tr><th>PERIOD</th><th>SIZE</th><th>NUMS</th><th>RES</th></tr></thead><tbody id="body30S"></tbody></table>
+    </div>
+  </div>
 
-    <div class="takeaway">
-      <h3>🎯 Critical decision-making example: pandemic policy & hospital surge</h3>
-      <p>In early 2020, some regions saw <strong>daily COVID-19 hospitalizations: 1,200 (big)</strong> → then <strong>90 (small)</strong> over a weekend due to reporting lag. Public health models ignoring this juxtaposition would forecast a drastic decline, triggering premature de-escalation of ICU capacity. In reality, the following week saw numbers rebound to 1,500. <strong>Recognizing the pattern</strong> as "reporting artifact + weekend effect" vs true decay was crucial for maintaining lockdown levels and PPE stockpiles. Decision-makers who used <strong>7-day rolling averages</strong> and accounted for small-number anomaies avoided catastrophic undersupply.</p>
-      <p style="margin-top: 0.8rem;">✅ <strong>Ultimate insight:</strong> A large number followed by a very small number (or inverse) always demands a <em>contextual diagnostic</em>: Is it a measurement change, regime shift, or stochastic fluctuation? Forecasting accuracy depends on treating the pair as an <strong>informative signal</strong> not as noise to be smoothed away.</p>
-    </div>
-
-    <div style="background: white; border-radius: 1.2rem; margin-top: 2rem; padding: 1rem 1.5rem; border: 1px solid #cde3ec;">
-      <h3 style="font-size: 1.2rem; margin-bottom: 0.5rem;">⚙️ Applied frameworks that handle big–small juxtaposition</h3>
-      <table style="width: 100%; border-collapse: collapse; font-size: 0.9rem;">
-        <thead>
-          <tr><th style="text-align: left; padding: 0.6rem 0;">Method</th><th style="text-align: left; padding: 0.6rem 0;">Role in prediction</th></tr>
-        </thead>
-        <tbody>
-          <tr><td style="padding: 0.4rem 0;">Bayesian structural time series</td><td style="padding: 0.4rem 0;">Learns local trends and abruptly adapts after large → small outliers.</td></tr>
-          <tr><td style="padding: 0.4rem 0;">GARCH with jumps</td><td style="padding: 0.4rem 0;">Adds discontinuous jump component for large→small return sequences.</td></tr>
-          <tr><td style="padding: 0.4rem 0;">Self-correcting (Hawkes) processes</td><td style="padding: 0.4rem 0;">Models earthquake aftershocks: large quakes raise intensity, small follow-up reassigns hazard.</td></tr>
-          <tr><td style="padding: 0.4rem 0;">Quantile regression forests</td><td style="padding: 0.4rem 0;">Preserves distributional sensitivity to paired extremes.</td></tr>
-        </tbody>
-      </table>
-      <p style="font-size: 0.85rem; margin-top: 1rem;">🔎 Recognizing the “large then small” / “small then large” pattern changes forecast intervals from narrow to highly asymmetric, safeguarding against overconfidence. </p>
-    </div>
-    <footer>
-      © 2026 Predictive Analytics — Understanding numerical extremes prevents model failure and drives resilient strategies.
-    </footer>
+  <div style="text-align:center;margin-top:10px;font-size:0.7rem;color:rgba(255,255,255,0.16);letter-spacing:1px;">
+    © CYBER TAMILAN · Personal VIP Predictor
   </div>
 </div>
+
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+<script>
+const firebaseConfig = {
+  apiKey: "AIzaSyAt8o7iIxPVH7xv8FWY82COtH9WCj5DOjs",
+  authDomain: "madara-web.firebaseapp.com",
+  projectId: "madara-web",
+  storageBucket: "madara-web.appspot.com",
+  messagingSenderId: "34918030636",
+  appId: "1:34918030636:web:bebec895d5c9d604346089"
+};
+firebase.initializeApp(firebaseConfig);
+const db = firebase.firestore();
+
+const UNIVERSAL_KEY = "SAM";
+
+function isValidAccessKey(k) { return k.trim().toUpperCase() === UNIVERSAL_KEY; }
+
+function showApp() {
+  document.getElementById('loginPage').style.display = 'none';
+  document.getElementById('mainApp').style.display = 'flex';
+}
+
+function checkAuth() {
+  const key = document.getElementById('accessKey').value;
+  const err = document.getElementById('loginErr');
+  err.style.display = 'none';
+  if (!key) { err.innerText = "⚠️ ENTER ACCESS KEY!"; err.style.display = "block"; return; }
+  if (isValidAccessKey(key)) {
+    localStorage.setItem("ct_session", "SAM_UNIVERSAL");
+    showApp(); startLiveSyncUnlimited(); return;
+  }
+  db.collection('keys').doc(key).get().then((doc) => {
+    if (doc.exists) {
+      const data = doc.data();
+      if (!data.expired && new Date() < data.expiry.toDate()) {
+        localStorage.setItem("ct_session", key);
+        showApp(); startLiveSync(key);
+      } else { err.innerText = "❌ KEY EXPIRED! CONTACT @cybertamil7"; err.style.display = "block"; }
+    } else { err.innerText = "❌ INVALID KEY! CONTACT @cybertamil7"; err.style.display = "block"; }
+  }).catch(() => { err.innerText = "⚠️ CONNECTION ERROR! TRY AGAIN."; err.style.display = "block"; });
+}
+
+function startLiveSyncUnlimited() {
+  try {
+    db.collection('broadcast').doc('message').onSnapshot((doc) => {
+      const bar = document.getElementById('broadcastBar');
+      if (doc.exists && doc.data().text) { bar.innerText = "📢 " + doc.data().text; bar.style.display = "block"; }
+      else { bar.style.display = "none"; }
+    });
+  } catch(e) {}
+}
+
+function startLiveSync(key) {
+  setInterval(() => {
+    db.collection('keys').doc(key).get().then((doc) => {
+      if (doc.exists) {
+        const data = doc.data();
+        if (data.expired || new Date() >= data.expiry.toDate()) {
+          localStorage.removeItem("ct_session");
+          alert("⚡ KEY EXPIRED! CONTACT @cybertamil7");
+          location.reload();
+        }
+      }
+    });
+  }, 3000);
+  db.collection('broadcast').doc('message').onSnapshot((doc) => {
+    const bar = document.getElementById('broadcastBar');
+    if (doc.exists && doc.data().text) { bar.innerText = "📢 " + doc.data().text; bar.style.display = "block"; }
+    else { bar.style.display = "none"; }
+  });
+}
+
+window.onload = function() {
+  const saved = localStorage.getItem("ct_session");
+  if (saved === "SAM_UNIVERSAL") { showApp(); startLiveSyncUnlimited(); }
+  else if (saved) {
+    db.collection('keys').doc(saved).get().then((doc) => {
+      if (doc.exists) {
+        const data = doc.data();
+        if (!data.expired && new Date() < data.expiry.toDate()) { showApp(); startLiveSync(saved); }
+        else { localStorage.removeItem("ct_session"); }
+      } else { localStorage.removeItem("ct_session"); }
+    }).catch(() => {});
+  }
+};
+
+const CT_PREFIX = 'ct_fresh_';
+let state = {
+  '1M':  { history:[], stats:{w:0,l:0,j:0}, lastPrd:"", patternData:{correct:0,total:0} },
+  '30S': { history:[], stats:{w:0,l:0,j:0}, lastPrd:"", patternData:{correct:0,total:0} }
+};
+try {
+  let s1 = localStorage.getItem(CT_PREFIX+'1M');
+  let s2 = localStorage.getItem(CT_PREFIX+'30S');
+  if (s1) state['1M']  = JSON.parse(s1);
+  if (s2) state['30S'] = JSON.parse(s2);
+} catch(e) {}
+
+function saveState(type) { localStorage.setItem(CT_PREFIX+type, JSON.stringify(state[type])); }
+
+const API_1M  = 'https://draw.ar-lottery01.com/WinGo/WinGo_1M/GetHistoryIssuePage.json';
+const API_30S = 'https://draw.ar-lottery01.com/WinGo/WinGo_30S/GetHistoryIssuePage.json';
+
+function getPrediction(list) {
+  if (list.length < 10) return { res:'WAIT', n:'--', mode:'SYNCING', conf:0 };
+  const numbers = list.map(h => parseInt(h.number));
+  const results = numbers.map(n => n >= 5 ? 'BIG' : 'SMALL');
+  const last10 = results.slice(0,10);
+  const bigCount   = last10.filter(r => r==='BIG').length;
+  const smallCount = last10.filter(r => r==='SMALL').length;
+  const last3Str = results.slice(0,3).join('');
+  let decision='', mode='';
+  if      (bigCount >= 8)                                         { decision='SMALL'; mode='⚡ CT BREAK BIG'; }
+  else if (smallCount >= 8)                                       { decision='BIG';   mode='⚡ CT BREAK SMALL'; }
+  else if (last3Str==='BIGBIGBIG')                                { decision='SMALL'; mode='🔥 CT 3 BIG BREAK'; }
+  else if (last3Str==='SMALLSMALLSMALL')                          { decision='BIG';   mode='🔥 CT 3 SMALL BREAK'; }
+  else if (last3Str==='BIGSMALLBIG'||last3Str==='SMALLBIGSMALL') { decision=results[0]==='BIG'?'SMALL':'BIG'; mode='🌀 CT ALTERNATE'; }
+  else if (numbers[0]===0||numbers[0]===9)                        { decision=numbers[0]<5?'BIG':'SMALL'; mode='💎 CT EXTREME'; }
+  else { decision=bigCount>smallCount?'BIG':'SMALL'; mode='📈 CT TREND'; }
+  let num1, num2;
+  if (decision==='BIG') { const bn=[9,8,7,6,5]; num1=bn[Math.floor(Math.random()*3)]; num2=bn[Math.floor(Math.random()*3)+2]; }
+  else                  { const sn=[4,3,2,1,0]; num1=sn[Math.floor(Math.random()*3)]; num2=sn[Math.floor(Math.random()*3)+2]; }
+  return { res:decision, n:`${num1},${num2}`, mode:mode, conf:92 };
+}
+
+async function updateGame(type, url) {
+  try {
+    const response = await fetch(url+'?v='+Date.now());
+    const data = await response.json();
+    if (!data?.data?.list) return;
+    const list = data.data.list;
+    const latestIssue = list[0].issueNumber;
+    const nextPrd = (BigInt(latestIssue)+1n).toString();
+    if (state[type].lastPrd !== nextPrd) {
+      state[type].lastPrd = nextPrd;
+      const pred = getPrediction(list);
+      state[type].history.unshift({ period:nextPrd, size:pred.res, nums:pred.n, status:"Pending", timestamp:Date.now() });
+      if (state[type].history.length > 30) state[type].history.pop();
+      document.getElementById(`period${type}`).innerHTML = `<i class="fas fa-satellite-dish"></i> PERIOD: ${nextPrd.slice(-3)} <span>${pred.mode}</span>`;
+      document.getElementById(`res${type}`).innerText = pred.res;
+      document.getElementById(`num${type}`).innerText = `NUMS: ${pred.n}   ACC: ${pred.conf}%`;
+      saveState(type);
+    }
+    let updated = false;
+    state[type].history.forEach(h => {
+      if (h.status === "Pending") {
+        const match = list.find(l => l.issueNumber === h.period);
+        if (match) {
+          const actualNum = parseInt(match.number);
+          const actualSize = actualNum >= 5 ? "BIG" : "SMALL";
+          if (h.size === actualSize) {
+            if (h.nums.split(',')[0]==actualNum || h.nums.split(',')[1]==actualNum) {
+              h.status="JACKPOT"; state[type].stats.j++; state[type].stats.w++; state[type].patternData.correct++;
+            } else { h.status="Win"; state[type].stats.w++; state[type].patternData.correct++; }
+          } else { h.status="Loss"; state[type].stats.l++; }
+          state[type].patternData.total++;
+          updated = true;
+        }
+      }
+    });
+    const acc = state[type].patternData.total > 0 ? ((state[type].patternData.correct/state[type].patternData.total)*100).toFixed(1) : 0;
+    document.getElementById(`acc${type}`).innerText = acc+'%';
+    document.getElementById(`accFill${type}`).style.width = acc+'%';
+    if (updated) saveState(type);
+    render(type, list);
+  } catch(e) { console.error(e); }
+}
+
+function render(type, list) {
+  const s = state[type].stats;
+  document.getElementById(`w${type}`).innerText = s.w;
+  document.getElementById(`l${type}`).innerText = s.l;
+  document.getElementById(`j${type}`).innerText = s.j;
+  document.getElementById(`resCont${type}`).innerHTML = list.slice(0,10).map(item => {
+    const n = parseInt(item.number);
+    return `<div class="res-circle">${n}<small>${n>=5?'BIG':'SML'}</small></div>`;
+  }).join('');
+  document.getElementById(`body${type}`).innerHTML = state[type].history.slice(0,15).map(h => {
+    let bc='pending-bg', bt='?';
+    if (h.status==='Win')     { bc='win-bg';     bt='W'; }
+    if (h.status==='Loss')    { bc='loss-bg';    bt='L'; }
+    if (h.status==='JACKPOT') { bc='jackpot-bg'; bt='J'; }
+    return `<tr><td style="color:var(--text);font-weight:700">${h.period.slice(-3)}</td><td style="color:var(--gold)">${h.size}</td><td style="color:#2ecc71">${h.nums}</td><td><span class="status-badge ${bc}">${bt}</span></td></tr>`;
+  }).join('');
+}
+
+function switchTab(type) {
+  document.getElementById('btn1M').classList.toggle('active', type==='1M');
+  document.getElementById('btn30S').classList.toggle('active', type==='30S');
+  document.getElementById('section1M').classList.toggle('hidden', type!=='1M');
+  document.getElementById('section30S').classList.toggle('hidden', type!=='30S');
+}
+
+setInterval(() => updateGame('1M',  API_1M),  3000);
+setInterval(() => updateGame('30S', API_30S), 2000);
+updateGame('1M',  API_1M);
+updateGame('30S', API_30S);
+
+window.checkAuth = checkAuth;
+window.switchTab = switchTab;
+</script>
 </body>
 </html>

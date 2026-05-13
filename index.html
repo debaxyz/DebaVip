@@ -755,7 +755,7 @@ function analyzeAndPredict(history) {
 /* TIMER */
 function startSyncedTimer(s) {
   if (timerInterval) clearInterval(timerInterval);
-  s = Math.max(1, Math.min(60, s));
+  s = Math.max(1, Math.min(30, s));
   function tick() {
     var el = document.getElementById('liveTimer');
     el.textContent = '00:' + String(s).padStart(2, '0');

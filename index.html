@@ -634,7 +634,7 @@ drawFire();
 var HISTORY_API = 'https://draw.ar-lottery01.com/WinGo/WinGo_1M/GetHistoryIssuePage.json';
 var predHistory = [], winCount = 0, lossCount = 0, lastPred = '', timerInterval = null;
 var selectedBS = null;
-var isScanning = true;
+var isScanning = false;
 
 function getBigSmall(n) { return n >= 5 ? 'Big' : 'Small'; }
 function getDotClass(n) {
@@ -869,7 +869,7 @@ function showWinSticker() {
 }
 
 /* MAIN ENGINE */
-var engineRunning = true;
+var engineRunning = false;
 async function startEngine() {
   if (isScanning) return;
   try {
@@ -884,14 +884,14 @@ async function startEngine() {
 
     // Timer
     try {
-      var secsLeft = 30;
+      var secsLeft = 60;
       if (json.data && json.data.list[0] && json.data.list[0].endTime) {
         var diff = Math.floor((new Date(json.data.list[0].endTime).getTime() - Date.now()) / 1000);
         secsLeft = diff > 0 ? diff : (60 + diff);
         secsLeft = Math.max(1, Math.min(60, secsLeft));
       } else { secsLeft = 60 - new Date().getSeconds(); }
       startSyncedTimer(secsLeft);
-    } catch(e) { startSyncedTimer(30); }
+    } catch(e) { startSyncedTimer(60); }
 
     // Update home
     updateHomeOutcomes(results);

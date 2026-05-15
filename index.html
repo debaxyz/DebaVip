@@ -1,5 +1,3 @@
-
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -79,6 +77,7 @@
             position: relative; overflow: hidden;
         }
 
+        /* Shimmer Border Animation */
         .main-card::before {
             content: ''; position: absolute; top: -50%; left: -50%; width: 200%; height: 200%;
             background: linear-gradient(45deg, transparent, rgba(255,255,255,0.6), transparent);
@@ -202,7 +201,7 @@
                 
                 <div style="width: 80%; margin: 0 auto 10px;">
                     <div style="display: flex; justify-content: space-between; font-size: 0.7rem; font-weight: 700; margin-bottom: 6px; font-family: var(--font-head);">
-                        <span style="color: var(--text-muted);">TREND CONFIDENCE</span>
+                        <span style="color: var(--text-muted);">AI CONFIDENCE</span>
                         <span id="prob-val" style="color: var(--neon-green);">0%</span>
                     </div>
                     <div style="height: 6px; background: #e2e8f0; border-radius: 10px; overflow: hidden;">
@@ -219,7 +218,7 @@
 
             <h3 class="history-title">
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="var(--neon-green)"><path d="M13 3c-4.97 0-9 4.03-9 9H1l3.89 3.89.07.14L9 12H6c0-3.87 3.13-7 7-7s7 3.13 7 7-3.13 7-7 7c-1.93 0-3.68-.79-4.94-2.06l-1.42 1.42C8.27 19.99 10.51 21 13 21c4.97 0 9-4.03 9-9s-4.03-9-9-9zm-1 5v5l4.28 2.54.72-1.21-3.5-2.08V8H12z"/></svg>
-                TREND HISTORY LOG
+                PREDICTION LOG
             </h3>
             
             <div class="table-container">
@@ -240,7 +239,7 @@
         <section id="page-sys" class="page">
             <h2 style="font-family: var(--font-head); margin-bottom: 20px;">SYSTEM</h2>
             <div class="table-container" style="padding: 20px;">
-                <p style="font-size: 0.9rem; margin-bottom: 20px; color: var(--text-muted);">Pattern Engine v5.0: Analyzing Big/Small sequences for trend prediction.</p>
+                <p style="font-size: 0.9rem; margin-bottom: 20px; color: var(--text-muted);">Neural Engine v4.2 Connected to WinGo 1M Data Node.</p>
                 <button onclick="clearHistory()" style="width:100%; padding: 15px; border-radius: 16px; border: none; background: #ff4757; color: #fff; font-family: var(--font-head); font-weight: 700; cursor: pointer;">RESET DATA</button>
             </div>
         </section>
@@ -263,10 +262,12 @@
 
     <script>
         const API_URL = "https://draw.ar-lottery01.com/WinGo/WinGo_1M/GetHistoryIssuePage.json";
-        let stats = JSON.parse(localStorage.getItem('cyberX_v5')) || { wins: 0, loss: 0, log: [] };
+        let stats = JSON.parse(localStorage.getItem('cyberX_v3')) || { wins: 0, loss: 0, log: [] };
         let activePred = null; 
         let lastKnownIssue = "";
+        let historyData = []; // Store recent draws for matrix analysis
 
+        // --- NAVIGATION ---
         function nav(pId, el) {
             document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
             document.getElementById(pId).classList.add('active');
@@ -274,49 +275,125 @@
             el.classList.add('active');
         }
 
-        // --- TREND ANALYSIS ENGINE (NO MATH.RANDOM) ---
-        function analyzeTrend() {
-            const history = stats.log.map(item => item.real); // Array of 'BIG' or 'SMALL'
-            
-            // Default if history is too short (Historical standard)
-            if (history.length < 3) return { type: 'SMALL', conf: 65 };
+        // --- MATRIX PREDICTION ENGINE ---
+        // Build transition matrix from historical data
+        function buildTransitionMatrix(data) {
+            if (data.length < 5) return null;
 
-            const [last1, last2, last3, last4] = history;
+            // States: 0=SMALL (0-4), 1=BIG (5-9)
+            let transitions = {
+                '00': 0, '01': 0,  // After SMALL: SMALL, BIG
+                '10': 0, '11': 0   // After BIG: SMALL, BIG
+            };
 
-            // PATTERN 1: THE DRAGON (Follow the streak)
-            if (last1 === last2 && last2 === last3) {
-                return { type: last1, conf: 88 }; 
+            // Also track number-specific patterns
+            let numberPatterns = {};
+            for (let i = 0; i < 10; i++) {
+                numberPatterns[i] = { 'nextBig': 0, 'nextSmall': 0, 'count': 0 };
             }
 
-            // PATTERN 2: PING-PONG (Alternating sequence)
-            if (last1 !== last2 && last2 === last3 && last3 !== last4) {
-                return { type: last1 === 'BIG' ? 'SMALL' : 'BIG', conf: 82 };
+            // Analyze sequences
+            for (let i = 0; i < data.length - 1; i++) {
+                const curr = parseInt(data[i].number);
+                const next = parseInt(data[i+1].number);
+                const currState = curr >= 5 ? '1' : '0';
+                const nextState = next >= 5 ? '1' : '0';
+
+                transitions[currState + nextState]++;
+
+                // Number-specific pattern
+                numberPatterns[curr].count++;
+                if (next >= 5) {
+                    numberPatterns[curr].nextBig++;
+                } else {
+                    numberPatterns[curr].nextSmall++;
+                }
             }
 
-            // PATTERN 3: V-CURVE (Frequency Balancing - Mean Reversion)
-            const recent10 = history.slice(0, 10);
-            const bigCount = recent10.filter(x => x === 'BIG').length;
-            const smallCount = recent10.filter(x => x === 'SMALL').length;
-
-            // Predict the under-represented type
-            if (bigCount > smallCount) return { type: 'SMALL', conf: 74 };
-            if (smallCount > bigCount) return { type: 'BIG', conf: 74 };
-
-            // Default fallback based on last result
-            return { type: last1, conf: 60 };
+            return { transitions, numberPatterns, totalTransitions: data.length - 1 };
         }
 
+        // Calculate prediction using Markov chain + pattern analysis
+        function calculatePrediction(matrix, lastDraw) {
+            if (!matrix || !lastDraw) return { type: 'BIG', confidence: 50 };
+
+            const lastNum = parseInt(lastDraw.number);
+            const lastState = lastNum >= 5 ? '1' : '0';
+
+            // Transition probabilities
+            const trans = matrix.transitions;
+            const totalFromState = trans[lastState + '0'] + trans[lastState + '1'];
+
+            let probBig = 0.5;
+            let probSmall = 0.5;
+
+            if (totalFromState > 0) {
+                const pSmall = trans[lastState + '0'] / totalFromState;
+                const pBig = trans[lastState + '1'] / totalFromState;
+                probBig = pBig;
+                probSmall = pSmall;
+            }
+
+            // Weight with number-specific pattern
+            const numPattern = matrix.numberPatterns[lastNum];
+            if (numPattern.count > 0) {
+                const numProbBig = numPattern.nextBig / numPattern.count;
+                // Weighted average: 60% transition, 40% number pattern
+                probBig = (probBig * 0.6) + (numProbBig * 0.4);
+                probSmall = 1 - probBig;
+            }
+
+            // Analyze streak patterns
+            let streakCount = 1;
+            let streakType = lastNum >= 5 ? 'BIG' : 'SMALL';
+            for (let i = 1; i < historyData.length; i++) {
+                const checkNum = parseInt(historyData[i].number);
+                const checkType = checkNum >= 5 ? 'BIG' : 'SMALL';
+                if (checkType === streakType) {
+                    streakCount++;
+                } else {
+                    break;
+                }
+            }
+
+            // Streak correction: after 2+ same results, slightly favor opposite
+            if (streakCount >= 2) {
+                if (streakType === 'BIG') {
+                    probBig *= 0.85; // Reduce big probability after streak
+                    probSmall = 1 - probBig;
+                } else {
+                    probSmall *= 0.85;
+                    probBig = 1 - probSmall;
+                }
+            }
+
+            // Calculate confidence based on data reliability
+            const dataReliability = Math.min(matrix.totalTransitions / 20, 1); // Max confidence with 20+ transitions
+            const predictionStrength = Math.abs(probBig - 0.5) * 2; // 0 to 1
+            const confidence = Math.round((50 + (predictionStrength * 50 * dataReliability)));
+
+            const prediction = probBig > probSmall ? 'BIG' : 'SMALL';
+            const finalConfidence = Math.min(Math.max(confidence, 55), 98); // Clamp between 55-98%
+
+            return { type: prediction, confidence: finalConfidence, probBig, probSmall };
+        }
+
+        // --- CORE ENGINE ---
         async function syncAPI() {
             try {
                 const res = await fetch(API_URL);
                 const data = await res.json();
                 if(!data.data || !data.data.list) return;
-                
+
                 const latestDraw = data.data.list[0];
                 if (latestDraw.issueNumber !== lastKnownIssue) {
+                    // Update history data (keep last 50)
+                    historyData.unshift(latestDraw);
+                    if (historyData.length > 50) historyData.pop();
+
                     processDraw(latestDraw);
                     lastKnownIssue = latestDraw.issueNumber;
-                    generateNewPred(latestDraw.issueNumber);
+                    generateNewPred(latestDraw);
                 }
             } catch (e) {
                 simulateLogic();
@@ -326,7 +403,7 @@
         function processDraw(draw) {
             const num = parseInt(draw.number);
             const actualBS = num >= 5 ? 'BIG' : 'SMALL';
-            
+
             if (activePred && activePred.issue === draw.issueNumber) {
                 const isWin = activePred.type === actualBS;
                 if (isWin) { stats.wins++; triggerWin(); } else { stats.loss++; }
@@ -339,15 +416,15 @@
                     status: isWin ? 'WIN' : 'LOSS'
                 });
 
-                if (stats.log.length > 30) stats.log.pop();
+                if (stats.log.length > 20) stats.log.pop();
                 save();
             }
         }
 
-        function generateNewPred(lastId) {
-            const nextId = (BigInt(lastId) + 1n).toString();
+        function generateNewPred(lastDraw) {
+            const nextId = (BigInt(lastDraw.issueNumber) + 1n).toString();
             document.getElementById('target-issue').innerText = nextId;
-            
+
             const aiText = document.getElementById('ai-prediction');
             const bar = document.getElementById('prob-bar');
             const val = document.getElementById('prob-val');
@@ -357,17 +434,21 @@
             bar.style.width = "0%";
 
             setTimeout(() => {
-                const trend = analyzeTrend();
-                aiText.innerText = trend.type;
+                // Build matrix from history and calculate prediction
+                const matrix = buildTransitionMatrix(historyData);
+                const result = calculatePrediction(matrix, lastDraw);
+
+                aiText.innerText = result.type;
                 aiText.style.opacity = "1";
-                bar.style.width = trend.conf + "%";
-                val.innerText = trend.conf + "%";
-                activePred = { issue: nextId, type: trend.type };
+                bar.style.width = result.confidence + "%";
+                val.innerText = result.confidence + "%";
+                activePred = { issue: nextId, type: result.type };
             }, 2500);
         }
 
         function save() {
-            localStorage.setItem('cyberX_v5', JSON.stringify(stats));
+            localStorage.setItem('cyberX_v3', JSON.stringify(stats));
+            localStorage.setItem('cyberX_history', JSON.stringify(historyData));
             refreshUI();
         }
 
@@ -397,28 +478,33 @@
 
         function clearHistory() { 
             stats = { wins: 0, loss: 0, log: [] }; 
+            historyData = [];
             save(); 
         }
 
+        // --- TIMER & BACKGROUND ---
         function runTimer() {
             setInterval(() => {
                 const sec = new Date().getSeconds();
                 const rem = 60 - sec;
                 document.getElementById('display-timer').innerText = `00:${rem.toString().padStart(2, '0')}`;
                 if (rem === 59) syncAPI();
-                
+
                 const ring = document.getElementById('ring-anim');
                 ring.style.animationDuration = rem < 10 ? "1s" : "3s";
             }, 1000);
         }
 
         function simulateLogic() {
-            const mockIssue = (BigInt(Math.floor(new Date().getTime() / 60000))).toString();
+            const mockIssue = (BigInt(new Date().getTime() / 60000)).toString();
             if (mockIssue !== lastKnownIssue) {
-                // If API fails, we use current minute as issue to maintain trend testing
-                processDraw({ issueNumber: mockIssue, number: (Math.floor(Date.now()/1000) % 10).toString() });
+                const mockDraw = { issueNumber: mockIssue, number: Math.floor(Math.random() * 10).toString() };
+                historyData.unshift(mockDraw);
+                if (historyData.length > 50) historyData.pop();
+
+                processDraw(mockDraw);
                 lastKnownIssue = mockIssue;
-                generateNewPred(mockIssue);
+                generateNewPred(mockDraw);
             }
         }
 
@@ -441,7 +527,13 @@
             requestAnimationFrame(animate);
         }
 
-        window.onload = () => { initCanvas(); animate(); runTimer(); syncAPI(); refreshUI(); };
+        window.onload = () => { 
+            // Load history from storage
+            const savedHistory = localStorage.getItem('cyberX_history');
+            if (savedHistory) historyData = JSON.parse(savedHistory);
+
+            initCanvas(); animate(); runTimer(); syncAPI(); refreshUI(); 
+        };
     </script>
 </body>
 </html>

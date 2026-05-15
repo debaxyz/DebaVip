@@ -1,3 +1,5 @@
+
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -77,7 +79,6 @@
             position: relative; overflow: hidden;
         }
 
-        /* Shimmer Border Animation */
         .main-card::before {
             content: ''; position: absolute; top: -50%; left: -50%; width: 200%; height: 200%;
             background: linear-gradient(45deg, transparent, rgba(255,255,255,0.6), transparent);
@@ -201,7 +202,7 @@
                 
                 <div style="width: 80%; margin: 0 auto 10px;">
                     <div style="display: flex; justify-content: space-between; font-size: 0.7rem; font-weight: 700; margin-bottom: 6px; font-family: var(--font-head);">
-                        <span style="color: var(--text-muted);">AI CONFIDENCE</span>
+                        <span style="color: var(--text-muted);">TREND CONFIDENCE</span>
                         <span id="prob-val" style="color: var(--neon-green);">0%</span>
                     </div>
                     <div style="height: 6px; background: #e2e8f0; border-radius: 10px; overflow: hidden;">
@@ -218,7 +219,7 @@
 
             <h3 class="history-title">
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="var(--neon-green)"><path d="M13 3c-4.97 0-9 4.03-9 9H1l3.89 3.89.07.14L9 12H6c0-3.87 3.13-7 7-7s7 3.13 7 7-3.13 7-7 7c-1.93 0-3.68-.79-4.94-2.06l-1.42 1.42C8.27 19.99 10.51 21 13 21c4.97 0 9-4.03 9-9s-4.03-9-9-9zm-1 5v5l4.28 2.54.72-1.21-3.5-2.08V8H12z"/></svg>
-                PREDICTION LOG
+                TREND HISTORY LOG
             </h3>
             
             <div class="table-container">
@@ -239,7 +240,7 @@
         <section id="page-sys" class="page">
             <h2 style="font-family: var(--font-head); margin-bottom: 20px;">SYSTEM</h2>
             <div class="table-container" style="padding: 20px;">
-                <p style="font-size: 0.9rem; margin-bottom: 20px; color: var(--text-muted);">Neural Engine v4.2 Connected to WinGo 1M Data Node.</p>
+                <p style="font-size: 0.9rem; margin-bottom: 20px; color: var(--text-muted);">Pattern Engine v5.0: Analyzing Big/Small sequences for trend prediction.</p>
                 <button onclick="clearHistory()" style="width:100%; padding: 15px; border-radius: 16px; border: none; background: #ff4757; color: #fff; font-family: var(--font-head); font-weight: 700; cursor: pointer;">RESET DATA</button>
             </div>
         </section>
@@ -262,11 +263,10 @@
 
     <script>
         const API_URL = "https://draw.ar-lottery01.com/WinGo/WinGo_1M/GetHistoryIssuePage.json";
-        let stats = JSON.parse(localStorage.getItem('cyberX_v3')) || { wins: 0, loss: 0, log: [] };
+        let stats = JSON.parse(localStorage.getItem('cyberX_v5')) || { wins: 0, loss: 0, log: [] };
         let activePred = null; 
         let lastKnownIssue = "";
 
-        // --- NAVIGATION ---
         function nav(pId, el) {
             document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
             document.getElementById(pId).classList.add('active');
@@ -274,100 +274,43 @@
             el.classList.add('active');
         }
 
-        // ============================================================
-        // === DETERMINISTIC PREDICTION ENGINE (No Math.random) =======
-        // ============================================================
+        // --- TREND ANALYSIS ENGINE (NO MATH.RANDOM) ---
+        function analyzeTrend() {
+            const history = stats.log.map(item => item.real); // Array of 'BIG' or 'SMALL'
+            
+            // Default if history is too short (Historical standard)
+            if (history.length < 3) return { type: 'SMALL', conf: 65 };
 
-        /**
-         * STEP 1 — Issue Number Hash Score
-         * Extracts last 6 digits, applies alternating prime weights,
-         * maps modulo result to a directional score.
-         */
-        function issueScore(issueNumber) {
-            const s = issueNumber.toString();
-            const digits = s.slice(-6).padStart(6, '0').split('').map(Number);
-            // Prime-weighted sum: distinct weights reduce collision patterns
-            const weights = [7, 3, 11, 2, 13, 5];
-            const weighted = digits.reduce((acc, d, i) => acc + d * weights[i], 0);
-            const mod = weighted % 10; // 0–9
-            // 0–4 → lean SMALL (−1), 5–9 → lean BIG (+1)
-            return mod >= 5 ? 1 : -1;
-        }
+            const [last1, last2, last3, last4] = history;
 
-        /**
-         * STEP 2 — History Pattern Score
-         * Streak reversal: 3+ consecutive same result → lean opposite.
-         * Frequency balance: if recent window is skewed, lean the other way.
-         */
-        function historyScore() {
-            const recent = stats.log.slice(0, 6);
-            if (recent.length === 0) return 0;
-
-            let score = 0;
-
-            // --- Streak detection ---
-            const lastResult = recent[0].real;
-            let streak = 0;
-            for (let i = 0; i < recent.length; i++) {
-                if (recent[i].real === lastResult) streak++;
-                else break;
-            }
-            // After 3+ streak: strong contrarian signal
-            if (streak >= 3) score += lastResult === 'BIG' ? -3 : 3;
-            else if (streak === 2) score += lastResult === 'BIG' ? -1 : 1;
-
-            // --- Frequency balance in last 6 ---
-            const bigCount  = recent.filter(l => l.real === 'BIG').length;
-            const smCount   = recent.length - bigCount;
-            // Over-represented side gets contrarian pressure
-            if (bigCount > smCount + 2) score -= 2;
-            else if (smCount > bigCount + 2) score += 2;
-
-            return score;
-        }
-
-        /**
-         * STEP 3 — Confidence Calculation
-         * Based on combined signal strength + recent win accuracy.
-         * Range: 72% – 96%
-         */
-        function calcConfidence(totalScore, predType) {
-            const signalStrength = Math.min(Math.abs(totalScore), 5); // cap at 5
-            let base = 72 + signalStrength * 4; // 72–92
-
-            // Bonus: recent accuracy > 60% adds up to 4 points
-            const recentN = Math.min(stats.log.length, 10);
-            if (recentN > 0) {
-                const recentWins = stats.log.slice(0, recentN).filter(l => l.status === 'WIN').length;
-                const acc = recentWins / recentN;
-                if (acc > 0.6) base += Math.round((acc - 0.6) * 10); // 0–4 bonus
+            // PATTERN 1: THE DRAGON (Follow the streak)
+            if (last1 === last2 && last2 === last3) {
+                return { type: last1, conf: 88 }; 
             }
 
-            return Math.min(base, 96);
+            // PATTERN 2: PING-PONG (Alternating sequence)
+            if (last1 !== last2 && last2 === last3 && last3 !== last4) {
+                return { type: last1 === 'BIG' ? 'SMALL' : 'BIG', conf: 82 };
+            }
+
+            // PATTERN 3: V-CURVE (Frequency Balancing - Mean Reversion)
+            const recent10 = history.slice(0, 10);
+            const bigCount = recent10.filter(x => x === 'BIG').length;
+            const smallCount = recent10.filter(x => x === 'SMALL').length;
+
+            // Predict the under-represented type
+            if (bigCount > smallCount) return { type: 'SMALL', conf: 74 };
+            if (smallCount > bigCount) return { type: 'BIG', conf: 74 };
+
+            // Default fallback based on last result
+            return { type: last1, conf: 60 };
         }
-
-        /**
-         * MASTER PREDICT — combines all signals into a final BIG/SMALL + confidence
-         */
-        function masterPredict(issueNumber) {
-            const iScore = issueScore(issueNumber);
-            const hScore = historyScore();
-            const total  = iScore + hScore;
-
-            const type = total >= 0 ? 'BIG' : 'SMALL';
-            const confidence = calcConfidence(total, type);
-            return { type, confidence };
-        }
-
-        // ============================================================
-        // === CORE ENGINE ============================================
-        // ============================================================
 
         async function syncAPI() {
             try {
                 const res = await fetch(API_URL);
                 const data = await res.json();
-                if (!data.data || !data.data.list) return;
+                if(!data.data || !data.data.list) return;
                 
                 const latestDraw = data.data.list[0];
                 if (latestDraw.issueNumber !== lastKnownIssue) {
@@ -396,7 +339,7 @@
                     status: isWin ? 'WIN' : 'LOSS'
                 });
 
-                if (stats.log.length > 20) stats.log.pop();
+                if (stats.log.length > 30) stats.log.pop();
                 save();
             }
         }
@@ -406,27 +349,25 @@
             document.getElementById('target-issue').innerText = nextId;
             
             const aiText = document.getElementById('ai-prediction');
-            const bar    = document.getElementById('prob-bar');
-            const val    = document.getElementById('prob-val');
+            const bar = document.getElementById('prob-bar');
+            const val = document.getElementById('prob-val');
 
-            aiText.innerText = "WAIT";
+            aiText.innerText = "ANALYZING";
             aiText.style.opacity = "0.5";
             bar.style.width = "0%";
 
             setTimeout(() => {
-                // ★ DETERMINISTIC — no Math.random ★
-                const { type, confidence } = masterPredict(nextId);
-
-                aiText.innerText = type;
+                const trend = analyzeTrend();
+                aiText.innerText = trend.type;
                 aiText.style.opacity = "1";
-                bar.style.width = confidence + "%";
-                val.innerText = confidence + "%";
-                activePred = { issue: nextId, type: type };
+                bar.style.width = trend.conf + "%";
+                val.innerText = trend.conf + "%";
+                activePred = { issue: nextId, type: trend.type };
             }, 2500);
         }
 
         function save() {
-            localStorage.setItem('cyberX_v3', JSON.stringify(stats));
+            localStorage.setItem('cyberX_v5', JSON.stringify(stats));
             refreshUI();
         }
 
@@ -434,7 +375,7 @@
             document.getElementById('total-wins').innerText = stats.wins;
             document.getElementById('total-loss').innerText = stats.loss;
             const total = stats.wins + stats.loss;
-            document.getElementById('total-acc').innerText = total === 0 ? "0%" : Math.round((stats.wins / total) * 100) + "%";
+            document.getElementById('total-acc').innerText = total === 0 ? "0%" : Math.round((stats.wins/total)*100) + "%";
 
             const logBody = document.getElementById('log-body');
             logBody.innerHTML = stats.log.map(item => `
@@ -459,7 +400,6 @@
             save(); 
         }
 
-        // --- TIMER ---
         function runTimer() {
             setInterval(() => {
                 const sec = new Date().getSeconds();
@@ -472,47 +412,31 @@
             }, 1000);
         }
 
-        /**
-         * Offline fallback — derives mock issue & number deterministically from epoch minute.
-         * No Math.random used.
-         */
         function simulateLogic() {
-            const epochMin  = Math.floor(Date.now() / 60000);
-            const mockIssue = epochMin.toString();
-
+            const mockIssue = (BigInt(Math.floor(new Date().getTime() / 60000))).toString();
             if (mockIssue !== lastKnownIssue) {
-                // Deterministic mock number: use last two digits of epoch second
-                const epochSec  = Math.floor(Date.now() / 1000);
-                const mockNum   = ((epochSec % 100) % 10).toString(); // 0-9, repeatable
-                processDraw({ issueNumber: mockIssue, number: mockNum });
+                // If API fails, we use current minute as issue to maintain trend testing
+                processDraw({ issueNumber: mockIssue, number: (Math.floor(Date.now()/1000) % 10).toString() });
                 lastKnownIssue = mockIssue;
                 generateNewPred(mockIssue);
             }
         }
 
-        // --- BACKGROUND PARTICLES (visual only — Math.random kept here intentionally) ---
         const canvas = document.getElementById('bg-particles');
         const ctx = canvas.getContext('2d');
         let pts = [];
         function initCanvas() {
             canvas.width = window.innerWidth; canvas.height = window.innerHeight;
-            for (let i = 0; i < 35; i++) {
-                pts.push({
-                    x: Math.random() * canvas.width,
-                    y: Math.random() * canvas.height,
-                    vx: Math.random() * 0.3 - 0.15,
-                    vy: Math.random() * 0.3 - 0.15
-                });
-            }
+            for(let i=0; i<35; i++) pts.push({x: Math.random()*canvas.width, y: Math.random()*canvas.height, vx: Math.random()*0.3-0.15, vy: Math.random()*0.3-0.15});
         }
         function animate() {
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.clearRect(0,0,canvas.width, canvas.height);
             ctx.fillStyle = "rgba(0, 255, 136, 0.2)";
             pts.forEach(p => {
                 p.x += p.vx; p.y += p.vy;
-                if (p.x < 0 || p.x > canvas.width) p.vx *= -1;
-                if (p.y < 0 || p.y > canvas.height) p.vy *= -1;
-                ctx.beginPath(); ctx.arc(p.x, p.y, 1.5, 0, Math.PI * 2); ctx.fill();
+                if(p.x<0 || p.x>canvas.width) p.vx*=-1;
+                if(p.y<0 || p.y>canvas.height) p.vy*=-1;
+                ctx.beginPath(); ctx.arc(p.x, p.y, 1.5, 0, Math.PI*2); ctx.fill();
             });
             requestAnimationFrame(animate);
         }

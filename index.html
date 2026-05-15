@@ -10,6 +10,10 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@400;600&family=Roboto:wght@400;500;700;900&display=swap" rel="stylesheet">
 
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/9.6.4/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.4/firebase-database-compat.js"></script>
+
     <style>
         :root {
             --neon-green: #00ff88;
@@ -177,11 +181,23 @@
         }
         #win-sticker.active { transform: translate(-50%, -50%) scale(1); }
         #win-sticker h1 { font-family: var(--font-head); font-weight: 900; color: #000; }
+        
+        /* --- SYNC STATUS --- */
+        .sync-status {
+            position: fixed; top: 70px; right: 15px; padding: 6px 12px; border-radius: 20px;
+            font-size: 0.7rem; font-weight: 700; font-family: var(--font-head); z-index: 1001;
+            transition: all 0.3s;
+        }
+        .sync-online { background: #dcfce7; color: #166534; border: 1px solid #22c55e; }
+        .sync-offline { background: #fee2e2; color: #991b1b; border: 1px solid #ef4444; }
+        .sync-syncing { background: #fef3c7; color: #92400e; border: 1px solid #f59e0b; }
     </style>
 </head>
 <body>
 
     <canvas id="bg-particles"></canvas>
+
+    <div id="sync-indicator" class="sync-status sync-offline">OFFLINE</div>
 
     <header class="header">
         <div class="logo"><div class="logo-dot"></div>CYBER-X</div>
@@ -240,7 +256,12 @@
             <h2 style="font-family: var(--font-head); margin-bottom: 20px;">SYSTEM</h2>
             <div class="table-container" style="padding: 20px;">
                 <p style="font-size: 0.9rem; margin-bottom: 20px; color: var(--text-muted);">Neural Engine v4.2 Connected to WinGo 1M Data Node.</p>
-                <button onclick="clearHistory()" style="width:100%; padding: 15px; border-radius: 16px; border: none; background: #ff4757; color: #fff; font-family: var(--font-head); font-weight: 700; cursor: pointer;">RESET DATA</button>
+                <div style="margin-bottom: 15px; padding: 15px; background: #f8fafc; border-radius: 12px;">
+                    <p style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 8px;">Firebase Database Status</p>
+                    <p id="firebase-status" style="font-family: var(--font-head); font-weight: 700; color: var(--text-muted);">Not Connected</p>
+                </div>
+                <button onclick="clearHistory()" style="width:100%; padding: 15px; border-radius: 16px; border: none; background: #ff4757; color: #fff; font-family: var(--font-head); font-weight: 700; cursor: pointer; margin-bottom: 10px;">RESET DATA</button>
+                <button onclick="forceSync()" style="width:100%; padding: 15px; border-radius: 16px; border: 1px solid var(--neon-green); background: transparent; color: var(--neon-green); font-family: var(--font-head); font-weight: 700; cursor: pointer;">FORCE SYNC</button>
             </div>
         </section>
 
@@ -261,11 +282,45 @@
     <div id="win-sticker"><h1>WINNER</h1></div>
 
     <script>
+        // ==================== FIREBASE CONFIG ====================
+        // REPLACE THESE WITH YOUR ACTUAL FIREBASE PROJECT CREDENTIALS
+          const firebaseConfig = {
+    apiKey: "AIzaSyDA-bSbBR0QbytYk-1WG3MmJnLFYGFvqD4",
+    authDomain: "prediction-1fe3c.firebaseapp.com",
+    databaseURL: "https://prediction-1fe3c-default-rtdb.firebaseio.com",
+    projectId: "prediction-1fe3c",
+    storageBucket: "prediction-1fe3c.firebasestorage.app",
+    messagingSenderId: "954183101944",
+    appId: "1:954183101944:web:e3fd828742f76a55dc7a0d",
+    measurementId: "G-NP8NSYTCCV"
+  };
+
+
+        // Initialize Firebase
+        let db = null;
+        let firebaseConnected = false;
+        
+        try {
+            firebase.initializeApp(firebaseConfig);
+            db = firebase.database();
+            firebaseConnected = true;
+            console.log("Firebase initialized successfully");
+        } catch (e) {
+            console.error("Firebase init failed:", e);
+            firebaseConnected = false;
+        }
+
         const API_URL = "https://draw.ar-lottery01.com/WinGo/WinGo_1M/GetHistoryIssuePage.json";
-        let stats = JSON.parse(localStorage.getItem('cyberX_v3')) || { wins: 0, loss: 0, log: [] };
+        
+        // Local state (synced with Firebase)
+        let stats = { wins: 0, loss: 0, log: [] };
         let activePred = null; 
         let lastKnownIssue = "";
-        let historyData = []; // Store recent draws for matrix analysis
+        let historyData = [];
+        let isScanning = false;
+        let scanInterval = null;
+        let countdownInterval = null;
+        let syncListener = null;
 
         // --- NAVIGATION ---
         function nav(pId, el) {
@@ -275,128 +330,258 @@
             el.classList.add('active');
         }
 
-        // --- MATRIX PREDICTION ENGINE ---
-        // Build transition matrix from historical data
+        // ==================== FIREBASE DATABASE FUNCTIONS ====================
+
+        // Save data to Firebase Realtime Database
+        async function saveToFirebase() {
+            if (!db || !firebaseConnected) {
+                console.warn("Firebase not connected, using localStorage fallback");
+                localStorage.setItem('cyberX_v3', JSON.stringify(stats));
+                localStorage.setItem('cyberX_history', JSON.stringify(historyData));
+                localStorage.setItem('cyberX_lastIssue', lastKnownIssue);
+                updateSyncStatus('offline');
+                return;
+            }
+
+            updateSyncStatus('syncing');
+            
+            try {
+                const data = {
+                    stats: stats,
+                    history: historyData.slice(0, 50), // Keep last 50
+                    lastIssue: lastKnownIssue,
+                    lastUpdated: new Date().toISOString(),
+                    activePred: activePred
+                };
+
+                await db.ref('cyberX_data').set(data);
+                updateSyncStatus('online');
+                console.log("Data saved to Firebase");
+            } catch (error) {
+                console.error("Firebase save error:", error);
+                updateSyncStatus('offline');
+                // Fallback to localStorage
+                localStorage.setItem('cyberX_v3', JSON.stringify(stats));
+                localStorage.setItem('cyberX_history', JSON.stringify(historyData));
+                localStorage.setItem('cyberX_lastIssue', lastKnownIssue);
+            }
+        }
+
+        // Load data from Firebase Realtime Database
+        async function loadFromFirebase() {
+            if (!db || !firebaseConnected) {
+                console.warn("Firebase not connected, loading from localStorage");
+                loadFromLocalStorage();
+                updateSyncStatus('offline');
+                return;
+            }
+
+            updateSyncStatus('syncing');
+
+            try {
+                const snapshot = await db.ref('cyberX_data').once('value');
+                const data = snapshot.val();
+
+                if (data) {
+                    stats = data.stats || { wins: 0, loss: 0, log: [] };
+                    historyData = data.history || [];
+                    lastKnownIssue = data.lastIssue || "";
+                    activePred = data.activePred || null;
+                    
+                    // Ensure log array exists
+                    if (!stats.log) stats.log = [];
+                    
+                    console.log("Data loaded from Firebase");
+                    updateSyncStatus('online');
+                } else {
+                    // No data in Firebase yet, try localStorage
+                    loadFromLocalStorage();
+                }
+            } catch (error) {
+                console.error("Firebase load error:", error);
+                loadFromLocalStorage();
+                updateSyncStatus('offline');
+            }
+            
+            refreshUI();
+        }
+
+        // Load from localStorage (fallback)
+        function loadFromLocalStorage() {
+            stats = JSON.parse(localStorage.getItem('cyberX_v3')) || { wins: 0, loss: 0, log: [] };
+            historyData = JSON.parse(localStorage.getItem('cyberX_history')) || [];
+            lastKnownIssue = localStorage.getItem('cyberX_lastIssue') || "";
+        }
+
+        // Clear Firebase data
+        async function clearFirebaseData() {
+            if (db && firebaseConnected) {
+                try {
+                    await db.ref('cyberX_data').remove();
+                    console.log("Firebase data cleared");
+                } catch (error) {
+                    console.error("Firebase clear error:", error);
+                }
+            }
+            // Always clear localStorage too
+            localStorage.removeItem('cyberX_v3');
+            localStorage.removeItem('cyberX_history');
+            localStorage.removeItem('cyberX_lastIssue');
+        }
+
+        // Real-time sync listener
+        function setupRealtimeSync() {
+            if (!db || !firebaseConnected) return;
+
+            // Listen for remote changes
+            syncListener = db.ref('cyberX_data').on('value', (snapshot) => {
+                const data = snapshot.val();
+                if (data && data.lastUpdated) {
+                    const remoteTime = new Date(data.lastUpdated).getTime();
+                    const localTime = new Date(stats.lastUpdated || 0).getTime();
+                    
+                    // Only update if remote data is newer
+                    if (remoteTime > localTime) {
+                        stats = data.stats || stats;
+                        historyData = data.history || historyData;
+                        lastKnownIssue = data.lastIssue || lastKnownIssue;
+                        activePred = data.activePred || activePred;
+                        if (!stats.log) stats.log = [];
+                        refreshUI();
+                        console.log("Real-time sync: remote data updated");
+                    }
+                }
+            });
+        }
+
+        // Update sync status UI
+        function updateSyncStatus(status) {
+            const indicator = document.getElementById('sync-indicator');
+            const statusText = document.getElementById('firebase-status');
+            
+            indicator.className = 'sync-status';
+            
+            switch(status) {
+                case 'online':
+                    indicator.classList.add('sync-online');
+                    indicator.innerText = 'ONLINE';
+                    if (statusText) statusText.innerText = 'Connected';
+                    if (statusText) statusText.style.color = '#22c55e';
+                    break;
+                case 'syncing':
+                    indicator.classList.add('sync-syncing');
+                    indicator.innerText = 'SYNCING...';
+                    if (statusText) statusText.innerText = 'Syncing...';
+                    if (statusText) statusText.style.color = '#f59e0b';
+                    break;
+                case 'offline':
+                default:
+                    indicator.classList.add('sync-offline');
+                    indicator.innerText = 'OFFLINE';
+                    if (statusText) statusText.innerText = 'Disconnected';
+                    if (statusText) statusText.style.color = '#ef4444';
+                    break;
+            }
+        }
+
+        // Force manual sync
+        async function forceSync() {
+            updateSyncStatus('syncing');
+            await saveToFirebase();
+            await loadFromFirebase();
+        }
+
+        // ==================== PREDICTION ENGINE ====================
         function buildTransitionMatrix(data) {
             if (data.length < 5) return null;
-
-            // States: 0=SMALL (0-4), 1=BIG (5-9)
-            let transitions = {
-                '00': 0, '01': 0,  // After SMALL: SMALL, BIG
-                '10': 0, '11': 0   // After BIG: SMALL, BIG
-            };
-
-            // Also track number-specific patterns
+            let transitions = { '00': 0, '01': 0, '10': 0, '11': 0 };
             let numberPatterns = {};
             for (let i = 0; i < 10; i++) {
                 numberPatterns[i] = { 'nextBig': 0, 'nextSmall': 0, 'count': 0 };
             }
-
-            // Analyze sequences
             for (let i = 0; i < data.length - 1; i++) {
                 const curr = parseInt(data[i].number);
                 const next = parseInt(data[i+1].number);
                 const currState = curr >= 5 ? '1' : '0';
                 const nextState = next >= 5 ? '1' : '0';
-
                 transitions[currState + nextState]++;
-
-                // Number-specific pattern
                 numberPatterns[curr].count++;
-                if (next >= 5) {
-                    numberPatterns[curr].nextBig++;
-                } else {
-                    numberPatterns[curr].nextSmall++;
-                }
+                if (next >= 5) numberPatterns[curr].nextBig++;
+                else numberPatterns[curr].nextSmall++;
             }
-
             return { transitions, numberPatterns, totalTransitions: data.length - 1 };
         }
 
-        // Calculate prediction using Markov chain + pattern analysis
         function calculatePrediction(matrix, lastDraw) {
             if (!matrix || !lastDraw) return { type: 'BIG', confidence: 50 };
-
             const lastNum = parseInt(lastDraw.number);
             const lastState = lastNum >= 5 ? '1' : '0';
-
-            // Transition probabilities
             const trans = matrix.transitions;
             const totalFromState = trans[lastState + '0'] + trans[lastState + '1'];
-
-            let probBig = 0.5;
-            let probSmall = 0.5;
-
+            let probBig = 0.5, probSmall = 0.5;
             if (totalFromState > 0) {
-                const pSmall = trans[lastState + '0'] / totalFromState;
-                const pBig = trans[lastState + '1'] / totalFromState;
-                probBig = pBig;
-                probSmall = pSmall;
+                probBig = trans[lastState + '1'] / totalFromState;
+                probSmall = trans[lastState + '0'] / totalFromState;
             }
-
-            // Weight with number-specific pattern
             const numPattern = matrix.numberPatterns[lastNum];
             if (numPattern.count > 0) {
                 const numProbBig = numPattern.nextBig / numPattern.count;
-                // Weighted average: 60% transition, 40% number pattern
                 probBig = (probBig * 0.6) + (numProbBig * 0.4);
                 probSmall = 1 - probBig;
             }
-
-            // Analyze streak patterns
             let streakCount = 1;
             let streakType = lastNum >= 5 ? 'BIG' : 'SMALL';
             for (let i = 1; i < historyData.length; i++) {
                 const checkNum = parseInt(historyData[i].number);
                 const checkType = checkNum >= 5 ? 'BIG' : 'SMALL';
-                if (checkType === streakType) {
-                    streakCount++;
-                } else {
-                    break;
-                }
+                if (checkType === streakType) streakCount++;
+                else break;
             }
-
-            // Streak correction: after 2+ same results, slightly favor opposite
             if (streakCount >= 2) {
-                if (streakType === 'BIG') {
-                    probBig *= 0.85; // Reduce big probability after streak
-                    probSmall = 1 - probBig;
-                } else {
-                    probSmall *= 0.85;
-                    probBig = 1 - probSmall;
-                }
+                if (streakType === 'BIG') { probBig *= 0.85; probSmall = 1 - probBig; }
+                else { probSmall *= 0.85; probBig = 1 - probSmall; }
             }
-
-            // Calculate confidence based on data reliability
-            const dataReliability = Math.min(matrix.totalTransitions / 20, 1); // Max confidence with 20+ transitions
-            const predictionStrength = Math.abs(probBig - 0.5) * 2; // 0 to 1
+            const dataReliability = Math.min(matrix.totalTransitions / 20, 1);
+            const predictionStrength = Math.abs(probBig - 0.5) * 2;
             const confidence = Math.round((50 + (predictionStrength * 50 * dataReliability)));
-
             const prediction = probBig > probSmall ? 'BIG' : 'SMALL';
-            const finalConfidence = Math.min(Math.max(confidence, 55), 98); // Clamp between 55-98%
-
-            return { type: prediction, confidence: finalConfidence, probBig, probSmall };
+            const finalConfidence = Math.min(Math.max(confidence, 55), 98);
+            return { type: prediction, confidence: finalConfidence };
         }
 
-        // --- CORE ENGINE ---
-        async function syncAPI() {
+        // ==================== SCAN & REFRESH ENGINE ====================
+        async function scanAndRefresh() {
+            if (isScanning) return;
+            isScanning = true;
+
             try {
-                const res = await fetch(API_URL);
+                const res = await fetch(API_URL + '?t=' + Date.now());
                 const data = await res.json();
-                if(!data.data || !data.data.list) return;
+                if (!data.data || !data.data.list || data.data.list.length === 0) return;
 
-                const latestDraw = data.data.list[0];
-                if (latestDraw.issueNumber !== lastKnownIssue) {
-                    // Update history data (keep last 50)
-                    historyData.unshift(latestDraw);
-                    if (historyData.length > 50) historyData.pop();
+                const newDraws = [];
+                for (const draw of data.data.list) {
+                    if (draw.issueNumber === lastKnownIssue) break;
+                    newDraws.push(draw);
+                }
 
-                    processDraw(latestDraw);
-                    lastKnownIssue = latestDraw.issueNumber;
-                    generateNewPred(latestDraw);
+                if (newDraws.length > 0) {
+                    for (let i = newDraws.length - 1; i >= 0; i--) {
+                        const draw = newDraws[i];
+                        historyData.unshift(draw);
+                        if (historyData.length > 50) historyData.pop();
+                        processDraw(draw);
+                    }
+
+                    lastKnownIssue = newDraws[0].issueNumber;
+                    const nextDraw = data.data.list[0];
+                    generateNewPred(nextDraw);
+                    await saveToFirebase(); // Save to Firebase instead of localStorage
                 }
             } catch (e) {
-                simulateLogic();
+                console.log('Scan error:', e);
+            } finally {
+                isScanning = false;
             }
         }
 
@@ -407,17 +592,15 @@
             if (activePred && activePred.issue === draw.issueNumber) {
                 const isWin = activePred.type === actualBS;
                 if (isWin) { stats.wins++; triggerWin(); } else { stats.loss++; }
-
                 stats.log.unshift({
                     issue: draw.issueNumber,
                     ai: activePred.type,
                     num: num,
                     real: actualBS,
-                    status: isWin ? 'WIN' : 'LOSS'
+                    status: isWin ? 'WIN' : 'LOSS',
+                    timestamp: new Date().toISOString()
                 });
-
                 if (stats.log.length > 20) stats.log.pop();
-                save();
             }
         }
 
@@ -429,12 +612,11 @@
             const bar = document.getElementById('prob-bar');
             const val = document.getElementById('prob-val');
 
-            aiText.innerText = "ANALYZING";
+            aiText.innerText = "SCANNING";
             aiText.style.opacity = "0.5";
             bar.style.width = "0%";
 
             setTimeout(() => {
-                // Build matrix from history and calculate prediction
                 const matrix = buildTransitionMatrix(historyData);
                 const result = calculatePrediction(matrix, lastDraw);
 
@@ -443,12 +625,11 @@
                 bar.style.width = result.confidence + "%";
                 val.innerText = result.confidence + "%";
                 activePred = { issue: nextId, type: result.type };
-            }, 2500);
+            }, 1500);
         }
 
-        function save() {
-            localStorage.setItem('cyberX_v3', JSON.stringify(stats));
-            localStorage.setItem('cyberX_history', JSON.stringify(historyData));
+        async function save() {
+            await saveToFirebase();
             refreshUI();
         }
 
@@ -476,63 +657,73 @@
             setTimeout(() => s.classList.remove('active'), 2000);
         }
 
-        function clearHistory() { 
+        async function clearHistory() { 
             stats = { wins: 0, loss: 0, log: [] }; 
             historyData = [];
-            save(); 
+            lastKnownIssue = "";
+            activePred = null;
+            await clearFirebaseData();
+            refreshUI(); 
         }
 
-        // --- TIMER & BACKGROUND ---
+        // --- CONTINUOUS SCAN TIMER ---
+        function startContinuousScan() {
+            scanInterval = setInterval(() => {
+                scanAndRefresh();
+            }, 3000);
+        }
+
         function runTimer() {
-            setInterval(() => {
-                const sec = new Date().getSeconds();
+            countdownInterval = setInterval(() => {
+                const now = new Date();
+                const sec = now.getSeconds();
                 const rem = 60 - sec;
                 document.getElementById('display-timer').innerText = `00:${rem.toString().padStart(2, '0')}`;
-                if (rem === 59) syncAPI();
 
                 const ring = document.getElementById('ring-anim');
                 ring.style.animationDuration = rem < 10 ? "1s" : "3s";
             }, 1000);
         }
 
-        function simulateLogic() {
-            const mockIssue = (BigInt(new Date().getTime() / 60000)).toString();
-            if (mockIssue !== lastKnownIssue) {
-                const mockDraw = { issueNumber: mockIssue, number: Math.floor(Math.random() * 10).toString() };
-                historyData.unshift(mockDraw);
-                if (historyData.length > 50) historyData.pop();
-
-                processDraw(mockDraw);
-                lastKnownIssue = mockIssue;
-                generateNewPred(mockDraw);
-            }
-        }
-
+        // --- CANVAS BACKGROUND ---
         const canvas = document.getElementById('bg-particles');
         const ctx = canvas.getContext('2d');
         let pts = [];
         function initCanvas() {
             canvas.width = window.innerWidth; canvas.height = window.innerHeight;
-            for(let i=0; i<35; i++) pts.push({x: Math.random()*canvas.width, y: Math.random()*canvas.height, vx: Math.random()*0.3-0.15, vy: Math.random()*0.3-0.15});
+            for(let i=0; i<<35; i++) pts.push({x: Math.random()*canvas.width, y: Math.random()*canvas.height, vx: Math.random()*0.3-0.15, vy: Math.random()*0.3-0.15});
         }
         function animate() {
             ctx.clearRect(0,0,canvas.width, canvas.height);
             ctx.fillStyle = "rgba(0, 255, 136, 0.2)";
             pts.forEach(p => {
                 p.x += p.vx; p.y += p.vy;
-                if(p.x<0 || p.x>canvas.width) p.vx*=-1;
-                if(p.y<0 || p.y>canvas.height) p.vy*=-1;
+                if(p.x<<0 || p.x>canvas.width) p.vx*=-1;
+                if(p.y<<0 || p.y>canvas.height) p.vy*=-1;
                 ctx.beginPath(); ctx.arc(p.x, p.y, 1.5, 0, Math.PI*2); ctx.fill();
             });
             requestAnimationFrame(animate);
         }
 
-        window.onload = () => { 
-            // Load history from storage
-            const savedHistory = localStorage.getItem('cyberX_history');
-            if (savedHistory) historyData = JSON.parse(savedHistory);
-
-            initCanvas(); animate(); runTimer(); syncAPI(); refreshUI(); 
+        // ==================== INITIALIZATION ====================
+        window.onload = async () => { 
+            initCanvas(); 
+            animate(); 
+            runTimer();
+            
+            // Load from Firebase first, fallback to localStorage
+            await loadFromFirebase();
+            
+            // Setup real-time sync
+            setupRealtimeSync();
+            
+            // Initial scan
+            await scanAndRefresh();
+            
+            // Start continuous scanning
+            startContinuousScan();
+            
+            refreshUI();
         };
     </script>
 </body>

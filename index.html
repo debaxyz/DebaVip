@@ -274,7 +274,7 @@
             <span>HOME</span>
         </a>
         <a href="javascript:void(0)" class="nav-btn" onclick="nav('page-sys', this)">
-            <svg class="nav-icon" viewBox="0 0 24 24"><path d="M12 15.5A3.5 3.5 0 0 1 8.5 12 3.5 3.5 0 0 1 12 8.5a3.5 3.5 0 0 1 3.5 3.5 3.5 3.5 0 0 1-3.5 3.5m7.43-2.53c.04-.32.07-.64.07-.97 0-.33-.03-.66-.07-1l2.11-1.63c.19-.15.24-.42.12-.64l-2-3.46c-.12-.22-.39-.31-.61-.22l-2.49 1c-.52-.39-1.06-.73-1.69-.98l-.37-2.65c-.04-.24-.25-.42-.5-.42h-4c-.25 0-.46.18-.5.42l-.37 2.65c-.63.25-1.17.59-1.69.98l-2.49-1c-.22-.09-.49 0-.61.22l-2 3.46c-.13.22-.07.49.12.64l2.11 1.63c-.04.34-.07.67-.07 1 0 .33.03.65.07.97l-2.11 1.66c-.19.15-.24.42-.12.64l2 3.46c.12.22.39.31.61.22l2.49-1c.52.39 1.06.73 1.69.98l.37 2.65c.04.24.25.42.5.42h4c.25 0 .46-.18.5-.42l.37-2.65c.63-.25 1.17-.59 1.69-.98l2.49 1c.22.09.49 0 .61-.22l2-3.46c.12-.22.07-.49-.12-.64l-2.11-1.66z"/></svg>
+            <svg class="nav-icon" viewBox="0 0 24 24"><path d="M12 15.5A3.5 3.5 0 0 1 8.5 12 3.5 3.5 0 0 1 12 8.5a3.5 3.5 0 0 1 3.5 3.5 3.5 3.5 0 0 1-3.5 3.5m7.43-2.53c.04-.32.07-.64.07-.97 0-.33-.03-.66-.07-1l2.11-1.63c.19-.15.24-.42.12-.64l-2-3.46c-.12-.22-.39-.31-.61-.22l-2.49 1c-.52-.39-1.06-.73-1.69-.98l-.37-2.65c-.04-.24-.25-.42-.5-.42h-4c-.25 0-.46.18-.5.42l-.37 2.65c-.63.25-1.17.59-1.69.98l-2.49-1c-.22-.09-.49 0-.61.22l-2 3.46c-.13.22-.07.49.12.64l2.11 1.63c-.04.34-.07.67-.07 1 0 .33.03.65.07.97l-2.11 1.66c-.19.15-.24.42-.12.64l2 3.46c.12.22.39.31.61.22l2.49-1c.52.39 1.06.73 1.69.98l.37 2.65c.04.24.25.42.5.42h4c.25 0 .46-.18.5-.42l.37-2.65c.63.25 1.17-.59 1.69-.98l2.49 1c.22.09.49 0 .61-.22l2-3.46c.12-.22.07-.49-.12-.64l-2.11-1.66z"/></svg>
             <span>SYSTEM</span>
         </a>
     </nav>
@@ -493,7 +493,7 @@
 
         // ==================== PREDICTION ENGINE ====================
         function buildTransitionMatrix(data) {
-            if (data.length < 5) return null;
+            if (data.length < 3) return null;
             let transitions = { '00': 0, '01': 0, '10': 0, '11': 0 };
             let numberPatterns = {};
             for (let i = 0; i < 10; i++) {
@@ -513,22 +513,34 @@
         }
 
         function calculatePrediction(matrix, lastDraw) {
-            if (!matrix || !lastDraw) return { type: 'BIG', confidence: 50 };
+            if (!matrix || !lastDraw) return { type: 'BIG', confidence: 60 };
             const lastNum = parseInt(lastDraw.number);
             const lastState = lastNum >= 5 ? '1' : '0';
             const trans = matrix.transitions;
             const totalFromState = trans[lastState + '0'] + trans[lastState + '1'];
-            let probBig = 0.5, probSmall = 0.5;
+            
+            let bigVotes = 0;
+            let smallVotes = 0;
+            let totalVotes = 0;
+            
+            // Vote 1: Transition matrix - what usually follows this state
             if (totalFromState > 0) {
-                probBig = trans[lastState + '1'] / totalFromState;
-                probSmall = trans[lastState + '0'] / totalFromState;
+                if (trans[lastState + '1'] > trans[lastState + '0']) bigVotes += 2;
+                else if (trans[lastState + '1'] < trans[lastState + '0']) smallVotes += 2;
+                else { bigVotes += 1; smallVotes += 1; }
+                totalVotes += 2;
             }
+            
+            // Vote 2: Number-specific pattern - what usually follows this exact number
             const numPattern = matrix.numberPatterns[lastNum];
             if (numPattern.count > 0) {
-                const numProbBig = numPattern.nextBig / numPattern.count;
-                probBig = (probBig * 0.6) + (numProbBig * 0.4);
-                probSmall = 1 - probBig;
+                if (numPattern.nextBig > numPattern.nextSmall) bigVotes += 3;
+                else if (numPattern.nextBig < numPattern.nextSmall) smallVotes += 3;
+                else { bigVotes += 1; smallVotes += 1; }
+                totalVotes += 3;
             }
+            
+            // Vote 3: Streak detection - counter-trend after streaks
             let streakCount = 1;
             let streakType = lastNum >= 5 ? 'BIG' : 'SMALL';
             for (let i = 1; i < historyData.length; i++) {
@@ -537,16 +549,34 @@
                 if (checkType === streakType) streakCount++;
                 else break;
             }
-            if (streakCount >= 2) {
-                if (streakType === 'BIG') { probBig *= 0.85; probSmall = 1 - probBig; }
-                else { probSmall *= 0.85; probBig = 1 - probSmall; }
+            if (streakCount >= 3) {
+                // Strong streak - vote for reversal
+                if (streakType === 'BIG') smallVotes += 2;
+                else bigVotes += 2;
+                totalVotes += 2;
+            } else if (streakCount === 2) {
+                // Weak streak - slight reversal vote
+                if (streakType === 'BIG') smallVotes += 1;
+                else bigVotes += 1;
+                totalVotes += 1;
             }
-            const dataReliability = Math.min(matrix.totalTransitions / 20, 1);
-            const predictionStrength = Math.abs(probBig - 0.5) * 2;
-            const confidence = Math.round((50 + (predictionStrength * 50 * dataReliability)));
-            const prediction = probBig > probSmall ? 'BIG' : 'SMALL';
-            const finalConfidence = Math.min(Math.max(confidence, 55), 98);
-            return { type: prediction, confidence: finalConfidence };
+            
+            // Determine prediction based on vote count
+            let prediction = 'BIG';
+            if (smallVotes > bigVotes) prediction = 'SMALL';
+            else if (smallVotes === bigVotes) prediction = lastNum >= 5 ? 'SMALL' : 'BIG'; // Default to flip
+            
+            // Calculate confidence based on vote margin and data amount
+            const voteMargin = Math.abs(bigVotes - smallVotes);
+            const maxPossibleVotes = totalVotes || 1;
+            const marginRatio = voteMargin / maxPossibleVotes;
+            const dataReliability = Math.min(matrix.totalTransitions / 15, 1);
+            
+            // Confidence: base 55 + margin contribution + data reliability contribution
+            let confidence = 55 + Math.round(marginRatio * 25) + Math.round(dataReliability * 15);
+            confidence = Math.min(Math.max(confidence, 55), 95);
+            
+            return { type: prediction, confidence: confidence };
         }
 
         // ==================== SCAN & REFRESH ENGINE ====================

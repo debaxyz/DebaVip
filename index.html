@@ -274,7 +274,7 @@
             <span>HOME</span>
         </a>
         <a href="javascript:void(0)" class="nav-btn" onclick="nav('page-sys', this)">
-            <svg class="nav-icon" viewBox="0 0 24 24"><path d="M12 15.5A3.5 3.5 0 0 1 8.5 12 3.5 3.5 0 0 1 12 8.5a3.5 3.5 0 0 1 3.5 3.5 3.5 3.5 0 0 1-3.5 3.5m7.43-2.53c.04-.32.07-.64.07-.97 0-.33-.03-.66-.07-1l2.11-1.63c.19-.15.24-.42.12-.64l-2-3.46c-.12-.22-.39-.31-.61-.22l-2.49 1c-.52-.39-1.06-.73-1.69-.98l-.37-2.65c-.04-.24-.25-.42-.5-.42h-4c-.25 0-.46.18-.5.42l-.37 2.65c-.63.25-1.17.59-1.69.98l-2.49-1c-.22-.09-.49 0-.61.22l-2 3.46c-.13.22-.07.49.12.64l2.11 1.63c-.04.34-.07.67-.07 1 0 .33.03.65.07.97l-2.11 1.66c-.19.15-.24.42-.12.64l2 3.46c.12.22.39.31.61.22l2.49-1c.52.39 1.06.73 1.69.98l.37 2.65c.04.24.25.42.5.42h4c.25 0 .46-.18.5-.42l.37-2.65c.63.25 1.17-.59 1.69-.98l2.49 1c.22.09.49 0 .61-.22l2-3.46c.12-.22.07-.49-.12-.64l-2.11-1.66z"/></svg>
+            <svg class="nav-icon" viewBox="0 0 24 24"><path d="M12 15.5A3.5 3.5 0 0 1 8.5 12 3.5 3.5 0 0 1 12 8.5a3.5 3.5 0 0 1 3.5 3.5 3.5 3.5 0 0 1-3.5 3.5m7.43-2.53c.04-.32.07-.64.07-.97 0-.33-.03-.66-.07-1l2.11-1.63c.19-.15.24-.42.12-.64l-2-3.46c-.12-.22-.39-.31-.61-.22l-2.49 1c-.52-.39-1.06-.73-1.69-.98l-.37-2.65c-.04-.24-.25-.42-.5-.42h-4c-.25 0-.46.18-.5.42l-.37 2.65c-.63.25-1.17.59-1.69.98l-2.49-1c-.22-.09-.49 0-.61.22l-2 3.46c-.13.22-.07.49.12.64l2.11 1.63c-.04.34-.07.67-.07 1 0 .33.03.65.07.97l-2.11 1.66c-.19.15-.24.42-.12.64l2 3.46c.12.22.39.31.61.22l2.49-1c.52.39 1.06.73 1.69.98l.37 2.65c.04.24.25.42.5.42h4c.25 0 .46-.18.5-.42l.37-2.65c.63-.25 1.17-.59 1.69-.98l2.49 1c.22.09.49 0 .61-.22l2-3.46c.12-.22.07-.49-.12-.64l-2.11-1.66z"/></svg>
             <span>SYSTEM</span>
         </a>
     </nav>
@@ -496,6 +496,7 @@
             if (data.length < 3) return null;
             let transitions = { '00': 0, '01': 0, '10': 0, '11': 0 };
             let numberPatterns = {};
+            let bigSmallSeq = [];
             for (let i = 0; i < 10; i++) {
                 numberPatterns[i] = { 'nextBig': 0, 'nextSmall': 0, 'count': 0 };
             }
@@ -508,8 +509,10 @@
                 numberPatterns[curr].count++;
                 if (next >= 5) numberPatterns[curr].nextBig++;
                 else numberPatterns[curr].nextSmall++;
+                bigSmallSeq.push(currState);
             }
-            return { transitions, numberPatterns, totalTransitions: data.length - 1 };
+            bigSmallSeq.push(parseInt(data[data.length-1].number) >= 5 ? '1' : '0');
+            return { transitions, numberPatterns, totalTransitions: data.length - 1, bigSmallSeq };
         }
 
         function calculatePrediction(matrix, lastDraw) {
@@ -518,11 +521,11 @@
             const lastState = lastNum >= 5 ? '1' : '0';
             const trans = matrix.transitions;
             const totalFromState = trans[lastState + '0'] + trans[lastState + '1'];
-            
+
             let bigVotes = 0;
             let smallVotes = 0;
             let totalVotes = 0;
-            
+
             // Vote 1: Transition matrix - what usually follows this state
             if (totalFromState > 0) {
                 if (trans[lastState + '1'] > trans[lastState + '0']) bigVotes += 2;
@@ -530,7 +533,7 @@
                 else { bigVotes += 1; smallVotes += 1; }
                 totalVotes += 2;
             }
-            
+
             // Vote 2: Number-specific pattern - what usually follows this exact number
             const numPattern = matrix.numberPatterns[lastNum];
             if (numPattern.count > 0) {
@@ -539,7 +542,7 @@
                 else { bigVotes += 1; smallVotes += 1; }
                 totalVotes += 3;
             }
-            
+
             // Vote 3: Streak detection - counter-trend after streaks
             let streakCount = 1;
             let streakType = lastNum >= 5 ? 'BIG' : 'SMALL';
@@ -550,32 +553,58 @@
                 else break;
             }
             if (streakCount >= 3) {
-                // Strong streak - vote for reversal
                 if (streakType === 'BIG') smallVotes += 2;
                 else bigVotes += 2;
                 totalVotes += 2;
             } else if (streakCount === 2) {
-                // Weak streak - slight reversal vote
                 if (streakType === 'BIG') smallVotes += 1;
                 else bigVotes += 1;
                 totalVotes += 1;
             }
-            
+
+            // Vote 4: Sequence pattern analysis (alternating detection)
+            if (matrix.bigSmallSeq && matrix.bigSmallSeq.length >= 4) {
+                const seq = matrix.bigSmallSeq;
+                let altCount = 0;
+                for (let i = seq.length - 1; i > seq.length - 4; i--) {
+                    if (seq[i] !== seq[i-1]) altCount++;
+                }
+                if (altCount >= 3) {
+                    // Strong alternating pattern - vote for opposite of last
+                    if (lastState === '1') smallVotes += 2;
+                    else bigVotes += 2;
+                    totalVotes += 2;
+                } else if (altCount === 2) {
+                    // Weak alternating
+                    if (lastState === '1') smallVotes += 1;
+                    else bigVotes += 1;
+                    totalVotes += 1;
+                }
+            }
+
+            // Vote 5: Gap analysis - numbers missing from recent draws
+            const recentNums = historyData.slice(0, 10).map(d => parseInt(d.number));
+            const bigGap = [5,6,7,8,9].filter(n => !recentNums.includes(n)).length;
+            const smallGap = [0,1,2,3,4].filter(n => !recentNums.includes(n)).length;
+            if (bigGap > smallGap) smallVotes += 1;
+            else if (smallGap > bigGap) bigVotes += 1;
+            else { bigVotes += 0; smallVotes += 0; }
+            if (bigGap !== smallGap) totalVotes += 1;
+
             // Determine prediction based on vote count
             let prediction = 'BIG';
             if (smallVotes > bigVotes) prediction = 'SMALL';
-            else if (smallVotes === bigVotes) prediction = lastNum >= 5 ? 'SMALL' : 'BIG'; // Default to flip
-            
+            else if (smallVotes === bigVotes) prediction = lastNum >= 5 ? 'SMALL' : 'BIG';
+
             // Calculate confidence based on vote margin and data amount
             const voteMargin = Math.abs(bigVotes - smallVotes);
             const maxPossibleVotes = totalVotes || 1;
             const marginRatio = voteMargin / maxPossibleVotes;
             const dataReliability = Math.min(matrix.totalTransitions / 15, 1);
-            
-            // Confidence: base 55 + margin contribution + data reliability contribution
+
             let confidence = 55 + Math.round(marginRatio * 25) + Math.round(dataReliability * 15);
             confidence = Math.min(Math.max(confidence, 55), 95);
-            
+
             return { type: prediction, confidence: confidence };
         }
 
@@ -721,7 +750,10 @@
         let pts = [];
         function initCanvas() {
             canvas.width = window.innerWidth; canvas.height = window.innerHeight;
-            for(let i=0; i<<35; i++) pts.push({x: Math.random()*canvas.width, y: Math.random()*canvas.height, vx: Math.random()*0.3-0.15, vy: Math.random()*0.3-0.15});
+            const seed = 12345;
+            let s = seed;
+            function next() { s = (s * 16807 + 0) % 2147483647; return (s - 1) / 2147483646; }
+            for(let i=0; i<35; i++) pts.push({x: next()*canvas.width, y: next()*canvas.height, vx: next()*0.3-0.15, vy: next()*0.3-0.15});
         }
         function animate() {
             ctx.clearRect(0,0,canvas.width, canvas.height);

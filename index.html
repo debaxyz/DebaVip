@@ -329,29 +329,17 @@
             const last3 = log.slice(0, 3).map(item => item.real);
             const last4 = log.length >= 4 ? log.slice(0, 4).map(item => item.real) : null;
 
-            // DRAGON PATTERN: 3+ consecutive same results (BIG BIG BIG or SMALL SMALL SMALL)
-            // Check if last 3 are all the same - Dragon detected!
+            // EXAMPLE 3: Dragon Pattern (3+ consecutive same)
+            // Check if last 3 are all the same
             if (last3[0] === last3[1] && last3[1] === last3[2]) {
-                const prediction = last3[0]; // Continue the dragon streak
-
-                // Calculate dragon streak length for dynamic confidence
-                let streakLength = 3;
-                for (let i = 3; i < log.length; i++) {
-                    if (log[i].real === last3[0]) streakLength++;
-                    else break;
-                }
-
-                // Higher confidence for longer dragons
-                let confidence = 92;
-                if (streakLength >= 5) confidence = 96;
-                if (streakLength >= 7) confidence = 98;
-
+                // Dragon detected - predict SAME to continue the streak
+                const prediction = last3[0];
                 return { 
                     type: 'DRAGON', 
                     prediction: prediction, 
-                    confidence: confidence,
-                    reason: `🔥 DRAGON ${streakLength}x: ${last3[0]} streak → Continue ${prediction}`,
-                    preview: last3.join(' → ') + (streakLength > 3 ? ` (+${streakLength-3})` : '')
+                    confidence: 92,
+                    reason: `Dragon pattern: 3+ ${last3[0]}s → Continue ${prediction}`,
+                    preview: last3.join(' → ')
                 };
             }
 
@@ -493,9 +481,7 @@
                         patternDisplay.innerText = "ZIG-ZAG";
                     } else if (pattern.type === 'DRAGON') {
                         patternDisplay.className = "pattern-tag pattern-dragon";
-                        const streakMatch = pattern.reason.match(/\d+x/);
-                        const streakInfo = streakMatch ? streakMatch[0] : '3x';
-                        patternDisplay.innerText = "🔥 DRAGON " + streakInfo + " " + type;
+                        patternDisplay.innerText = "DRAGON " + type;
                     }
                 } else {
                     // Fallback logic
